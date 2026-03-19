@@ -250,6 +250,7 @@ export function Router({ routes, NotFound }: RouterProps) {
       if (committedUrlRef.current === urlAtSubmit) {
         setActionData(result);
         setNavigationState("idle");
+        prefetchCache.current.clear();
         setLoaderKey((k) => k + 1);
       }
     } catch (err) {
@@ -277,15 +278,12 @@ export function Router({ routes, NotFound }: RouterProps) {
     [navigate, submitAction, prefetch],
   );
 
-  if (!committedMatched) {
-    if (NotFound) return <NotFound />;
-    return <div>404 — Not Found</div>;
-  }
-
   // ページコンテンツを決定
   let content: ReactNode;
 
-  if (loaderError) {
+  if (!committedMatched) {
+    content = NotFound ? <NotFound /> : <div>404 — Not Found</div>;
+  } else if (loaderError) {
     const ErrorComp = committedMatched.route.ErrorBoundary;
     if (ErrorComp) {
       content = <ErrorComp error={loaderError} />;
@@ -310,10 +308,12 @@ export function Router({ routes, NotFound }: RouterProps) {
     }
   }
 
-  // layouts を外側から内側にネストして描画
-  for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
-    const Layout = committedMatched.route.layouts[i];
-    content = <Layout>{content}</Layout>;
+  // layouts を外側から内側にネストして描画（ルートマッチ時のみ）
+  if (committedMatched) {
+    for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
+      const Layout = committedMatched.route.layouts[i];
+      content = <Layout>{content}</Layout>;
+    }
   }
 
   return (
