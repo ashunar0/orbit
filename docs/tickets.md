@@ -33,14 +33,16 @@
 - loading.tsx なし → 白画面、error.tsx なし → 親を探す → なければクラッシュ
 - 既存ライブラリ（React Hook Form, SWR 等）との互換性あり
 
-### チケット
-- [ ] **P2-01**: scanner 拡張 — `loader.ts` / `action.ts` / `loading.tsx` / `error.tsx` の検出
-- [ ] **P2-02**: plugin 拡張 — 仮想モジュール生成に loader/action/loading/error を追加
-- [ ] **P2-03**: router 拡張 — loader 呼び出し + loading/error 表示の仕組み
-- [ ] **P2-04**: hooks 追加 — `useLoaderData()` / `useActionData()` / `useSearch()`
-- [ ] **P2-05**: Zod 統合 — params / search params のバリデーション
-- [ ] **P2-06**: playground デモ — loader/action/loading/error の動作確認
-- [ ] **P2-07**: テスト整備
+### ✅ 完了
+- [x] **P2-01**: scanner 拡張 — `loader.ts` / `action.ts` / `loading.tsx` / `error.tsx` の検出
+- [x] **P2-02**: plugin 拡張 — 仮想モジュール生成に loader/action/loading/error を追加
+- [x] **P2-03**: router 拡張 — loader 呼び出し + loading/error 表示の仕組み
+- [x] **P2-04**: hooks 追加 — `useLoaderData()` / `useActionData()` / `useSearchParams()`
+- [x] **P2-05**: Zod 統合 — params / search params のバリデーション
+- [x] **P2-06**: playground デモ — loader/loading/error の動作確認
+- [x] **P2-07**: テスト整備（全44テスト pass）
+
+**🎉 Phase 2 完了！**
 
 ---
 
