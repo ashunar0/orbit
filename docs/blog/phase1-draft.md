@@ -1,4 +1,4 @@
-# React ルーターを300行で自作する — Orbit Router 開発記 #1
+# Vite+ で App Router 風ルーターを300行で作る — Orbit Router 開発記 #1
 
 ## はじめに
 
