@@ -1,3 +1,4 @@
+import type { ZodType } from "zod";
 import { useRouterContext } from "./router";
 
 export function useParams(): Record<string, string> {
@@ -35,4 +36,24 @@ export function useActionData<T extends (...args: never[]) => Promise<unknown>>(
  */
 export function useSubmit(): (formData: FormData) => Promise<void> {
   return useRouterContext().submitAction;
+}
+
+/**
+ * URL の search params を取得する。
+ * Zod スキーマを渡すとバリデーション + 型推論が効く。
+ *
+ * @example
+ * // スキーマなし — 生の文字列
+ * const search = useSearchParams()  // Record<string, string>
+ *
+ * // スキーマあり — 型付き
+ * import { searchSchema } from './loader'
+ * const { page, sort } = useSearchParams(searchSchema)  // { page: number, sort: string }
+ */
+export function useSearchParams(): Record<string, string>;
+export function useSearchParams<T extends ZodType>(schema: T): T["_output"];
+export function useSearchParams(schema?: ZodType): unknown {
+  const raw = useRouterContext().search;
+  if (!schema) return raw;
+  return schema.parse(raw);
 }

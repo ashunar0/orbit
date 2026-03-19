@@ -7,8 +7,8 @@ interface Route {
   path: string;
   component: ComponentType;
   layouts: LayoutComponent[];
-  loader?: (args: { params: Record<string, string> }) => Promise<unknown>;
-  action?: (args: { params: Record<string, string>; formData: FormData }) => Promise<unknown>;
+  loader?: (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
+  action?: (args: { params: Record<string, string>; search: Record<string, string>; formData: FormData }) => Promise<unknown>;
   Loading?: ComponentType;
   ErrorBoundary?: ComponentType<{ error: Error }>;
 }
@@ -16,6 +16,7 @@ interface Route {
 interface RouterContextValue {
   currentPath: string;
   params: Record<string, string>;
+  search: Record<string, string>;
   navigate: (to: string) => void;
   loaderData: unknown;
   actionData: unknown;
@@ -37,7 +38,8 @@ interface RouterProps {
 }
 
 export function Router({ routes }: RouterProps) {
-  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const [currentUrl, setCurrentUrl] = useState(() => window.location.pathname + window.location.search);
+  const currentPath = useMemo(() => currentUrl.split("?")[0], [currentUrl]);
   const [loaderData, setLoaderData] = useState<unknown>(undefined);
   const [actionData, setActionData] = useState<unknown>(undefined);
   const [loaderError, setLoaderError] = useState<Error | null>(null);
@@ -55,22 +57,22 @@ export function Router({ routes }: RouterProps) {
   useEffect(() => {
     const onPopState = () => {
       clearRouteState();
-      setCurrentPath(window.location.pathname);
+      setCurrentUrl(window.location.pathname + window.location.search);
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   const navigate = useCallback((to: string) => {
-    if (to === currentPath) return;
+    if (to === currentUrl) return;
     clearRouteState();
     window.history.pushState(null, "", to);
-    setCurrentPath(to);
-  }, [currentPath]);
+    setCurrentUrl(to);
+  }, [currentUrl]);
 
   const matched = findMatchedRoute(routes, currentPath);
-  // #6: params を useMemo で安定化
   const params = useMemo(() => matched?.params ?? {}, [currentPath]);
+  const search = useMemo(() => parseSearchParams(currentUrl), [currentUrl]);
 
   // loader 呼び出し
   useEffect(() => {
@@ -85,7 +87,7 @@ export function Router({ routes }: RouterProps) {
     setIsLoading(true);
     setLoaderError(null);
 
-    matched.route.loader({ params }).then(
+    matched.route.loader({ params, search }).then(
       (data) => {
         if (!cancelled) {
           setLoaderData(data);
@@ -101,14 +103,14 @@ export function Router({ routes }: RouterProps) {
     );
 
     return () => { cancelled = true; };
-  }, [currentPath, loaderKey]);
+  }, [currentUrl, loaderKey]);
 
   const submitAction = useCallback(async (formData: FormData) => {
     if (!matched?.route.action) {
       throw new Error("この route に action が定義されていません");
     }
     const currentRoute = matched.route;
-    const result = await currentRoute.action({ params, formData });
+    const result = await currentRoute.action({ params, search, formData });
     // ナビゲーション済みなら state を更新しない
     if (matched?.route === currentRoute) {
       setActionData(result);
@@ -117,8 +119,8 @@ export function Router({ routes }: RouterProps) {
   }, [matched, params]);
 
   const ctx = useMemo<RouterContextValue>(
-    () => ({ currentPath, params, navigate, loaderData, actionData, submitAction }),
-    [currentPath, params, navigate, loaderData, actionData, submitAction],
+    () => ({ currentPath, params, search, navigate, loaderData, actionData, submitAction }),
+    [currentPath, params, search, navigate, loaderData, actionData, submitAction],
   );
 
   if (!matched) {
@@ -190,6 +192,16 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
     }
     return this.props.children;
   }
+}
+
+function parseSearchParams(url: string): Record<string, string> {
+  const idx = url.indexOf("?");
+  if (idx === -1) return {};
+  const result: Record<string, string> = {};
+  new URLSearchParams(url.slice(idx)).forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
 }
 
 function findMatchedRoute(

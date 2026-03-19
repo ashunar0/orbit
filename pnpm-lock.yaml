@@ -15,6 +15,9 @@ catalogs:
     vite-plus:
       specifier: latest
       version: 0.1.12
+    zod:
+      specifier: ^3.25.76
+      version: 3.25.76
 
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@latest
@@ -64,6 +67,9 @@ importers:
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@latest
         version: '@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(jiti@2.6.1)(typescript@5.9.3)(yaml@2.8.2)'
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@testing-library/react':
         specifier: 'catalog:'
@@ -1299,6 +1305,9 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
 
   '@babel/code-frame@7.29.0':
@@ -2257,3 +2266,5 @@ snapshots:
   yallist@3.1.1: {}
 
   yaml@2.8.2: {}
+
+  zod@3.25.76: {}
