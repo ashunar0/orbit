@@ -14,12 +14,17 @@ orbit-router/                     Vite+ monorepo (pnpm workspace)
 │       ├── index.ts              エクスポート口
 │       ├── plugin.ts             Vite プラグイン（仮想モジュール生成）
 │       ├── scanner.ts            routes/ ディレクトリスキャナ
-│       └── client.d.ts           virtual module の型定義
+│       ├── client.d.ts           virtual module の型定義
+│       └── runtime/              クライアントサイドランタイム
+│           ├── router.tsx        <Router> コンポーネント + RouterContext
+│           ├── link.tsx          <Link> コンポーネント（SPA ナビゲーション）
+│           ├── match.ts          ルートマッチング（動的パラメータ対応）
+│           └── hooks.ts          useParams() 等の hooks
 ├── apps/website/                 playground（動作確認用アプリ）
 │   ├── vite.config.ts            orbitRouter() + react プラグイン
 │   └── src/
 │       ├── main.tsx → app.tsx    React エントリ
-│       └── routes/               ルーティング対象（/, /about）
+│       └── routes/               ルーティング対象（/, /about, /users, /users/:id）
 └── docs/
     ├── requirements.md           要件定義
     └── tickets.md                チケット一覧
@@ -54,19 +59,24 @@ cd packages/orbit-router && pnpm run test
 
 ## 現在の状態
 
-Phase 1（CSR-only の最小ルーター）の途中。
+Phase 1（CSR-only の最小ルーター）がほぼ完了。
 
-**完了:**
+**完了（P1-01〜P1-12）:**
 - Vite プラグインの骨格（`orbitRouter()` 関数）
 - ディレクトリスキャナ（`routes/` → ルート一覧）
 - 仮想モジュール（`virtual:orbit-router/routes`）
 - HMR 対応（routes/ 変更で自動リロード）
 - playground セットアップ
-
-**次にやること（P1-07〜P1-09 が最優先）:**
 - `<Router>` コンポーネント（URL 状態管理 + ルートマッチング描画）
 - `<Link>` コンポーネント（`history.pushState` による SPA ナビゲーション）
 - `popstate` 対応（戻る/進むボタン）
+- 動的ルートマッチング（`/users/:id` → `{ id: "123" }` 抽出）
+- `useParams()` hook
+- ネストレイアウト（親ディレクトリの layout.tsx を自動収集・ネスト描画）
+
+**次にやること:**
+- P1-13: playground での動作確認・デモ拡充
+- P1-14: テスト整備（scanner / match / Router / Link）
 
 → 詳細は `docs/tickets.md` を参照。
 

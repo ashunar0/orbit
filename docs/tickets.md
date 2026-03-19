@@ -10,45 +10,14 @@
 - [x] **P1-04**: 仮想モジュール（`virtual:orbit-router/routes` でルート設定を提供）
 - [x] **P1-05**: HMR 対応（`routes/` 内の変更で自動リロード）
 - [x] **P1-06**: playground セットアップ（`apps/website` に React + サンプルルート）
+- [x] **P1-07**: `<Router>` コンポーネント（URL 状態管理 + ルートマッチング描画）
+- [x] **P1-08**: `<Link>` コンポーネント（`href` prop、`history.pushState` による SPA ナビゲーション）
+- [x] **P1-09**: `popstate` イベント対応（戻る/進むボタン）
+- [x] **P1-10**: 動的ルートマッチング（`/users/:id` → `{ id: "123" }` 抽出）
+- [x] **P1-11**: `useParams()` hook
+- [x] **P1-12**: ネストレイアウト（親ディレクトリの layout.tsx を自動収集）
 
 ### 🔲 未着手
-
-- [ ] **P1-07**: `<Router>` コンポーネント
-  - URL の状態を React context で管理
-  - 現在のパスに一致するルートを描画
-  - `packages/orbit-router/src/runtime/router.tsx` に実装
-  - 作業量: 中
-
-- [ ] **P1-08**: `<Link>` コンポーネント
-  - `<a>` のラッパー、クリックで `history.pushState`（リロードなし）
-  - `<Router>` の context を更新して再レンダリング
-  - `packages/orbit-router/src/runtime/link.tsx` に実装
-  - 作業量: 小
-
-- [ ] **P1-09**: `popstate` イベント対応
-  - ブラウザの戻る/進むボタンで `<Router>` の状態を更新
-  - `<Router>` 内で `useEffect` + `addEventListener("popstate", ...)`
-  - 作業量: 小
-
-- [ ] **P1-10**: 動的ルートのマッチング
-  - `/users/:id` のようなパスパラメータを解決
-  - `scanner.ts` は既に `[id]` → `:id` 変換済み
-  - ルートマッチング時に `/users/123` → `{ id: "123" }` を抽出するロジック追加
-  - `packages/orbit-router/src/runtime/match.ts` に実装
-  - 作業量: 中
-
-- [ ] **P1-11**: `useParams()` hooks
-  - 動的ルートのパラメータを取得する hooks
-  - `<Router>` の context からマッチ結果を読む
-  - `packages/orbit-router/src/runtime/hooks.ts` に実装
-  - 作業量: 小
-
-- [ ] **P1-12**: レイアウトのネスト
-  - 親ディレクトリの `layout.tsx` が子ルートを `{children}` で囲む
-  - 現状: ルートごとに1つの layout しかサポートしていない
-  - 対応: scanner がルートツリーを構築 → `<Router>` がネストして描画
-  - `scanner.ts` のデータ構造をツリー形式に変更
-  - 作業量: 大
 
 - [ ] **P1-13**: playground での動作確認・デモ拡充
   - 動的ルート（`/users/[id]`）のサンプル追加
