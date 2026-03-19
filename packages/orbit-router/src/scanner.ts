@@ -6,8 +6,8 @@ export interface RouteEntry {
   path: string;
   /** index.tsx のフルパス */
   filePath: string;
-  /** layout.tsx のフルパス（存在する場合） */
-  layoutPath?: string;
+  /** layout.tsx のフルパス一覧（外側から内側の順） */
+  layouts: string[];
 }
 
 /**
@@ -50,12 +50,12 @@ async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Prom
     const relativePath = path.relative(routesRoot, dir);
     const urlPath = dirToUrlPath(relativePath);
     const indexFile = entries.find((e) => e.isFile() && /^index\.tsx?$/.test(e.name))!;
-    const layoutFile = entries.find((e) => e.isFile() && /^layout\.tsx?$/.test(e.name));
+    const layouts = collectLayouts(dir, routesRoot);
 
     routes.push({
       path: urlPath,
       filePath: path.join(dir, indexFile.name),
-      layoutPath: layoutFile ? path.join(dir, layoutFile.name) : undefined,
+      layouts,
     });
   }
 
@@ -64,6 +64,37 @@ async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Prom
       await walk(path.join(dir, entry.name), routesRoot, routes);
     }
   }
+}
+
+/**
+ * 現在のディレクトリから routes ルートまで遡り、layout ファイルを収集する。
+ * 返却順は外側（ルート）から内側（現在のディレクトリ）。
+ */
+function collectLayouts(dir: string, routesRoot: string): string[] {
+  const layouts: string[] = [];
+  let current = dir;
+
+  while (true) {
+    const layoutPath = findLayoutFile(current);
+    if (layoutPath) {
+      layouts.push(layoutPath);
+    }
+
+    if (current === routesRoot) break;
+    current = path.dirname(current);
+  }
+
+  // 外側（ルート）から内側の順にする
+  layouts.reverse();
+  return layouts;
+}
+
+function findLayoutFile(dir: string): string | undefined {
+  for (const ext of [".tsx", ".ts"]) {
+    const p = path.join(dir, `layout${ext}`);
+    if (fs.existsSync(p)) return p;
+  }
+  return undefined;
 }
 
 /**

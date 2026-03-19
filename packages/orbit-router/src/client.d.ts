@@ -4,7 +4,7 @@ declare module "virtual:orbit-router/routes" {
   interface Route {
     path: string;
     component: ComponentType;
-    layout?: ComponentType<{ children: React.ReactNode }>;
+    layouts: ComponentType<{ children: React.ReactNode }>[];
   }
 
   export const routes: Route[];

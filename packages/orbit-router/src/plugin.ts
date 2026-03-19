@@ -47,20 +47,32 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
 function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): string {
   const imports: string[] = [];
   const routeDefs: string[] = [];
+  // layout の重複 import を防ぐ
+  const layoutImportMap = new Map<string, string>();
+  let layoutCounter = 0;
+
+  function getLayoutName(layoutPath: string): string {
+    let name = layoutImportMap.get(layoutPath);
+    if (!name) {
+      name = `Layout${layoutCounter++}`;
+      layoutImportMap.set(layoutPath, name);
+      imports.push(`import ${name} from "${layoutPath}";`);
+    }
+    return name;
+  }
 
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
     imports.push(`import ${componentName} from "${route.filePath}";`);
 
-    const hasLayout = route.layoutPath != null;
-    if (hasLayout) {
-      const layoutName = `Layout${i}`;
-      imports.push(`import ${layoutName} from "${route.layoutPath}";`);
+    const layoutNames = route.layouts.map((lp) => getLayoutName(lp));
+
+    if (layoutNames.length > 0) {
       routeDefs.push(
-        `  { path: "${route.path}", component: ${componentName}, layout: ${layoutName} }`,
+        `  { path: "${route.path}", component: ${componentName}, layouts: [${layoutNames.join(", ")}] }`,
       );
     } else {
-      routeDefs.push(`  { path: "${route.path}", component: ${componentName} }`);
+      routeDefs.push(`  { path: "${route.path}", component: ${componentName}, layouts: [] }`);
     }
   }
 
