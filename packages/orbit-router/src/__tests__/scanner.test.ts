@@ -22,13 +22,13 @@ describe("scanRoutes", () => {
   }
 
   it("returns empty array if routes dir does not exist", async () => {
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes).toEqual([]);
   });
 
   it("scans root page", async () => {
     createFile("page.tsx");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes).toHaveLength(1);
     expect(routes[0].path).toBe("/");
   });
@@ -36,20 +36,20 @@ describe("scanRoutes", () => {
   it("scans nested static route", async () => {
     createFile("page.tsx");
     createFile("about/page.tsx");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes.map((r) => r.path)).toContain("/about");
   });
 
   it("converts [param] to :param", async () => {
     createFile("users/[id]/page.tsx");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes.some((r) => r.path === "/users/:id")).toBe(true);
   });
 
   it("sorts static routes before dynamic routes", async () => {
     createFile("users/page.tsx");
     createFile("users/[id]/page.tsx");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     const paths = routes.map((r) => r.path);
     expect(paths.indexOf("/users")).toBeLessThan(paths.indexOf("/users/:id"));
   });
@@ -57,14 +57,14 @@ describe("scanRoutes", () => {
   it("skips directories starting with _", async () => {
     createFile("_hidden/page.tsx");
     createFile("about/page.tsx");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes.every((r) => !r.path.includes("hidden"))).toBe(true);
   });
 
   it("collects layout from current directory", async () => {
     createFile("page.tsx");
     createFile("layout.tsx", "export default ({ children }) => children");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes[0].layouts).toHaveLength(1);
     expect(routes[0].layouts[0]).toContain("layout.tsx");
   });
@@ -73,7 +73,7 @@ describe("scanRoutes", () => {
     createFile("layout.tsx");
     createFile("users/layout.tsx");
     createFile("users/[id]/page.tsx");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     const userRoute = routes.find((r) => r.path === "/users/:id");
     expect(userRoute).toBeDefined();
     expect(userRoute!.layouts).toHaveLength(2);
@@ -86,7 +86,7 @@ describe("scanRoutes", () => {
 
   it("handles .ts extension for page files", async () => {
     createFile("page.ts");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes).toHaveLength(1);
     expect(routes[0].path).toBe("/");
   });
@@ -94,7 +94,7 @@ describe("scanRoutes", () => {
   it("detects loader.ts alongside page.tsx", async () => {
     createFile("users/page.tsx");
     createFile("users/loader.ts", "export const loader = async () => ({})");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     const userRoute = routes.find((r) => r.path === "/users");
     expect(userRoute?.loaderPath).toContain("loader.ts");
   });
@@ -102,7 +102,7 @@ describe("scanRoutes", () => {
   it("detects action.ts alongside page.tsx", async () => {
     createFile("users/page.tsx");
     createFile("users/action.ts", "export const action = async () => ({})");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     const userRoute = routes.find((r) => r.path === "/users");
     expect(userRoute?.actionPath).toContain("action.ts");
   });
@@ -110,7 +110,7 @@ describe("scanRoutes", () => {
   it("detects loading.tsx alongside page.tsx", async () => {
     createFile("users/page.tsx");
     createFile("users/loading.tsx", "export default () => 'Loading...'");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     const userRoute = routes.find((r) => r.path === "/users");
     expect(userRoute?.loadingPath).toContain("loading.tsx");
   });
@@ -118,17 +118,30 @@ describe("scanRoutes", () => {
   it("detects error.tsx alongside page.tsx", async () => {
     createFile("users/page.tsx");
     createFile("users/error.tsx", "export default () => 'Error'");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     const userRoute = routes.find((r) => r.path === "/users");
     expect(userRoute?.errorPath).toContain("error.tsx");
   });
 
   it("does not set optional paths when files are absent", async () => {
     createFile("page.tsx");
-    const routes = await scanRoutes(tmpDir, "routes");
+    const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes[0].loaderPath).toBeUndefined();
     expect(routes[0].actionPath).toBeUndefined();
     expect(routes[0].loadingPath).toBeUndefined();
     expect(routes[0].errorPath).toBeUndefined();
+  });
+
+  it("detects not-found.tsx at routes root", async () => {
+    createFile("page.tsx");
+    createFile("not-found.tsx", "export default () => '404'");
+    const { notFoundPath } = await scanRoutes(tmpDir, "routes");
+    expect(notFoundPath).toContain("not-found.tsx");
+  });
+
+  it("returns undefined notFoundPath when not-found.tsx is absent", async () => {
+    createFile("page.tsx");
+    const { notFoundPath } = await scanRoutes(tmpDir, "routes");
+    expect(notFoundPath).toBeUndefined();
   });
 });

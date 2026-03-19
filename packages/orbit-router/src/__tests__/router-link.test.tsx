@@ -61,7 +61,7 @@ describe("Router", () => {
   it("renders fallback when no route matches", () => {
     window.history.pushState(null, "", "/unknown");
     render(<Router routes={routes} />);
-    expect(screen.getByText(/No routes found/)).toBeDefined();
+    expect(screen.getByText(/404 — Not Found/)).toBeDefined();
   });
 
   it("wraps page in layout", () => {

@@ -18,6 +18,12 @@ export interface RouteEntry {
   errorPath?: string;
 }
 
+export interface ScanResult {
+  routes: RouteEntry[];
+  /** routes ルートの not-found.tsx パス（存在する場合） */
+  notFoundPath?: string;
+}
+
 /**
  * routes ディレクトリをスキャンしてルート定義を生成する。
  *
@@ -26,11 +32,11 @@ export interface RouteEntry {
  *   routes/users/page.tsx → /users
  *   routes/users/[id]/page.tsx → /users/:id
  */
-export async function scanRoutes(root: string, routesDir: string): Promise<RouteEntry[]> {
+export async function scanRoutes(root: string, routesDir: string): Promise<ScanResult> {
   const absoluteRoutesDir = path.resolve(root, routesDir);
 
   if (!fs.existsSync(absoluteRoutesDir)) {
-    return [];
+    return { routes: [] };
   }
 
   const routes: RouteEntry[] = [];
@@ -46,7 +52,9 @@ export async function scanRoutes(root: string, routesDir: string): Promise<Route
     return aDynamic - bDynamic;
   });
 
-  return routes;
+  const notFoundPath = findFile(absoluteRoutesDir, "not-found");
+
+  return { routes, notFoundPath };
 }
 
 async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Promise<void> {

@@ -48,12 +48,14 @@
 
 ## Phase 2.5: DX 強化
 
-- [ ] **P2.5-01**: prefetch — Link hover 時に loader を先実行し、遷移を即時に
-- [ ] **P2.5-02**: `not-found.tsx` 規約 — ルート単位の 404 ページ定義
-- [ ] **P2.5-03**: `useNavigation` デモ — playground にプログレスバーを追加
-- [ ] **P2.5-04**: context 分割 — 再レンダリング最適化（navigate 変更時に loaderData 依存コンポーネントが再描画されない等）
-- [ ] **P2.5-05**: README 更新 — Phase 2 の API（loader/action/hooks）を反映
-- [ ] **P2.5-06**: npm publish 準備 — package.json 整備、LICENSE、CHANGELOG
+- [x] **P2.5-01**: prefetch — Link hover 時に loader を先実行し、遷移を即時に
+- [x] **P2.5-02**: `not-found.tsx` 規約 — ルート単位の 404 ページ定義
+- [x] **P2.5-03**: `useNavigation` デモ — playground にプログレスバーを追加
+- [x] **P2.5-04**: context 分割 — 再レンダリング最適化（navigate 変更時に loaderData 依存コンポーネントが再描画されない等）
+- [x] **P2.5-05**: README 更新 — Phase 2 の API（loader/action/hooks）を反映
+- [x] **P2.5-06**: npm publish 準備 — package.json 整備、LICENSE、CHANGELOG
+
+**🎉 Phase 2.5 完了！**
 
 ---
 

@@ -4,6 +4,18 @@
   "description": "Directory-based, type-safe router for Vite+ and React.",
   "license": "MIT",
   "author": "Asahi Kawanobe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asahiocean/orbit-router",
+    "directory": "packages/orbit-router"
+  },
+  "keywords": [
+    "router",
+    "react",
+    "vite",
+    "file-based-routing",
+    "type-safe"
+  ],
   "files": [
     "dist",
     "src/client.d.ts"

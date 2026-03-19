@@ -15,32 +15,46 @@ interface Route {
 
 export type NavigationState = "idle" | "loading" | "submitting";
 
-interface RouterContextValue {
+export interface RouterStateContextValue {
   currentPath: string;
   params: Record<string, string>;
   search: Record<string, string>;
-  navigate: (to: string) => void;
   loaderData: unknown;
   actionData: unknown;
-  submitAction: (formData: FormData) => Promise<void>;
   navigationState: NavigationState;
 }
 
-const RouterContext = createContext<RouterContextValue | null>(null);
+export interface RouterDispatchContextValue {
+  navigate: (to: string) => void;
+  submitAction: (formData: FormData) => Promise<void>;
+  prefetch: (to: string) => void;
+}
 
-export function useRouterContext(): RouterContextValue {
-  const ctx = useContext(RouterContext);
+const RouterStateContext = createContext<RouterStateContextValue | null>(null);
+const RouterDispatchContext = createContext<RouterDispatchContextValue | null>(null);
+
+export function useRouterStateContext(): RouterStateContextValue {
+  const ctx = useContext(RouterStateContext);
   if (!ctx) {
-    throw new Error("<Router> の外で useRouterContext() は使えません");
+    throw new Error("<Router> の外で useRouterStateContext() は使えません");
+  }
+  return ctx;
+}
+
+export function useRouterDispatchContext(): RouterDispatchContextValue {
+  const ctx = useContext(RouterDispatchContext);
+  if (!ctx) {
+    throw new Error("<Router> の外で useRouterDispatchContext() は使えません");
   }
   return ctx;
 }
 
 interface RouterProps {
   routes: Route[];
+  NotFound?: ComponentType;
 }
 
-export function Router({ routes }: RouterProps) {
+export function Router({ routes, NotFound }: RouterProps) {
   // committedUrl = 表示中のルート、pendingUrl = 遷移先（loader 実行中）
   const [committedUrl, setCommittedUrl] = useState(() => window.location.pathname + window.location.search);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
@@ -50,6 +64,7 @@ export function Router({ routes }: RouterProps) {
   const [loaderError, setLoaderError] = useState<Error | null>(null);
   const [navigationState, setNavigationState] = useState<NavigationState>("idle");
   const [loaderKey, setLoaderKey] = useState(0);
+  const prefetchCache = useRef(new Map<string, unknown>());
 
   const committedUrlRef = useRef(committedUrl);
   committedUrlRef.current = committedUrl;
@@ -69,12 +84,25 @@ export function Router({ routes }: RouterProps) {
     return () => window.removeEventListener("popstate", onPopState);
   }, [routes]);
 
-  // ナビゲーション開始: loader があれば pending、なければ即コミット
+  // ナビゲーション開始: キャッシュヒット → 即コミット、loader あり → pending、なし → 即コミット
   const startNavigation = useCallback((to: string) => {
     const toPath = to.split("?")[0];
     const toMatched = findMatchedRoute(routes, toPath);
 
     if (toMatched?.route.loader) {
+      // prefetch キャッシュを確認
+      const cached = prefetchCache.current.get(to);
+      if (cached !== undefined) {
+        prefetchCache.current.delete(to);
+        setPendingUrl(null);
+        pendingUrlRef.current = null;
+        setCommittedUrl(to);
+        setLoaderData(cached);
+        setLoaderError(null);
+        setActionData(undefined);
+        setNavigationState("idle");
+        return;
+      }
       // loader あり → pending にして裏で実行
       setPendingUrl(to);
       pendingUrlRef.current = to;
@@ -96,6 +124,20 @@ export function Router({ routes }: RouterProps) {
     window.history.pushState(null, "", to);
     startNavigation(to);
   }, [startNavigation]);
+
+  const prefetch = useCallback((to: string) => {
+    if (prefetchCache.current.has(to)) return;
+    const toPath = to.split("?")[0];
+    const toMatched = findMatchedRoute(routes, toPath);
+    if (!toMatched?.route.loader) return;
+
+    const toParams = toMatched.params;
+    const toSearch = parseSearchParams(to);
+    toMatched.route.loader({ params: toParams, search: toSearch }).then(
+      (data) => { prefetchCache.current.set(to, data); },
+      () => { /* prefetch 失敗は無視 — ナビゲーション時に再実行される */ },
+    );
+  }, [routes]);
 
   // pending ルートの loader 実行
   useEffect(() => {
@@ -218,22 +260,26 @@ export function Router({ routes }: RouterProps) {
     }
   }, [committedMatched, committedParams, committedSearch]);
 
-  const ctx = useMemo<RouterContextValue>(
+  const stateCtx = useMemo<RouterStateContextValue>(
     () => ({
       currentPath: committedPath,
       params: committedParams,
       search: committedSearch,
-      navigate,
       loaderData,
       actionData,
-      submitAction,
       navigationState,
     }),
-    [committedPath, committedParams, committedSearch, navigate, loaderData, actionData, submitAction, navigationState],
+    [committedPath, committedParams, committedSearch, loaderData, actionData, navigationState],
+  );
+
+  const dispatchCtx = useMemo<RouterDispatchContextValue>(
+    () => ({ navigate, submitAction, prefetch }),
+    [navigate, submitAction, prefetch],
   );
 
   if (!committedMatched) {
-    return <div>No routes found. Add a page.tsx to src/routes/</div>;
+    if (NotFound) return <NotFound />;
+    return <div>404 — Not Found</div>;
   }
 
   // ページコンテンツを決定
@@ -271,9 +317,11 @@ export function Router({ routes }: RouterProps) {
   }
 
   return (
-    <RouterContext.Provider value={ctx}>
-      {content}
-    </RouterContext.Provider>
+    <RouterStateContext.Provider value={stateCtx}>
+      <RouterDispatchContext.Provider value={dispatchCtx}>
+        {content}
+      </RouterDispatchContext.Provider>
+    </RouterStateContext.Provider>
   );
 }
 

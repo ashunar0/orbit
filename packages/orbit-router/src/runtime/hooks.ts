@@ -1,8 +1,8 @@
 import type { ZodType } from "zod";
-import { useRouterContext, type NavigationState } from "./router";
+import { useRouterStateContext, useRouterDispatchContext, type NavigationState } from "./router";
 
 export function useParams(): Record<string, string> {
-  return useRouterContext().params;
+  return useRouterStateContext().params;
 }
 
 /**
@@ -13,7 +13,7 @@ export function useParams(): Record<string, string> {
  * const data = useLoaderData<typeof loader>()
  */
 export function useLoaderData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> {
-  return useRouterContext().loaderData as Awaited<ReturnType<T>>;
+  return useRouterStateContext().loaderData as Awaited<ReturnType<T>>;
 }
 
 /**
@@ -24,7 +24,7 @@ export function useLoaderData<T extends (...args: never[]) => Promise<unknown>>(
  * const data = useActionData<typeof action>()
  */
 export function useActionData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> | undefined {
-  return useRouterContext().actionData as Awaited<ReturnType<T>> | undefined;
+  return useRouterStateContext().actionData as Awaited<ReturnType<T>> | undefined;
 }
 
 /**
@@ -35,7 +35,7 @@ export function useActionData<T extends (...args: never[]) => Promise<unknown>>(
  * submit(new FormData(form))
  */
 export function useSubmit(): (formData: FormData) => Promise<void> {
-  return useRouterContext().submitAction;
+  return useRouterDispatchContext().submitAction;
 }
 
 /**
@@ -53,7 +53,7 @@ export function useSubmit(): (formData: FormData) => Promise<void> {
 export function useSearchParams(): Record<string, string>;
 export function useSearchParams<T extends ZodType>(schema: T): T["_output"];
 export function useSearchParams(schema?: ZodType): unknown {
-  const raw = useRouterContext().search;
+  const raw = useRouterStateContext().search;
   if (!schema) return raw;
   return schema.parse(raw);
 }
@@ -66,7 +66,7 @@ export function useSearchParams(schema?: ZodType): unknown {
  * // state: "idle" | "loading" | "submitting"
  */
 export function useNavigation(): { state: NavigationState } {
-  const { navigationState } = useRouterContext();
+  const { navigationState } = useRouterStateContext();
   return { state: navigationState };
 }
 
@@ -78,5 +78,5 @@ export function useNavigation(): { state: NavigationState } {
  * navigate("/users/1")
  */
 export function useNavigate(): (to: string) => void {
-  return useRouterContext().navigate;
+  return useRouterDispatchContext().navigate;
 }

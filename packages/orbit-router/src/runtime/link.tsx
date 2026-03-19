@@ -1,12 +1,14 @@
 import type { AnchorHTMLAttributes, MouseEvent } from "react";
-import { useRouterContext } from "./router";
+import { useRouterDispatchContext } from "./router";
 
 interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   href: string;
+  /** false を渡すと hover 時の prefetch を無効化する */
+  prefetch?: boolean;
 }
 
-export function Link({ href, children, onClick, ...rest }: LinkProps) {
-  const { navigate } = useRouterContext();
+export function Link({ href, children, onClick, prefetch: shouldPrefetch = true, ...rest }: LinkProps) {
+  const { navigate, prefetch } = useRouterDispatchContext();
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     // 修飾キーや右クリック時はブラウザのデフォルト動作を維持
@@ -18,8 +20,12 @@ export function Link({ href, children, onClick, ...rest }: LinkProps) {
     navigate(href);
   };
 
+  const handleMouseEnter = () => {
+    if (shouldPrefetch) prefetch(href);
+  };
+
   return (
-    <a href={href} onClick={handleClick} {...rest}>
+    <a href={href} onClick={handleClick} onMouseEnter={handleMouseEnter} {...rest}>
       {children}
     </a>
   );

@@ -12,4 +12,5 @@ declare module "virtual:orbit-router/routes" {
   }
 
   export const routes: Route[];
+  export const NotFound: ComponentType | undefined;
 }

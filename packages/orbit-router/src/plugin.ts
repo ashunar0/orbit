@@ -27,8 +27,8 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
       },
       async load(id) {
         if (id === RESOLVED_VIRTUAL_MODULE_ID) {
-          const routes = await scanRoutes(root, routesDir);
-          return generateRouteModule(routes);
+          const result = await scanRoutes(root, routesDir);
+          return generateRouteModule(result);
         }
       },
       handleHotUpdate({ file, server }) {
@@ -45,7 +45,7 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
   ];
 }
 
-function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): string {
+function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof scanRoutes>>): string {
   const imports: string[] = [];
   const lazyDecls: string[] = [];
   const routeDefs: string[] = [];
@@ -106,13 +106,18 @@ function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): st
     routeDefs.push(`  { ${fields.join(", ")} }`);
   }
 
+  const notFoundImport = notFoundPath ? `import NotFound from "${notFoundPath}";` : "";
+  const notFoundExport = notFoundPath ? "export { NotFound };" : "export const NotFound = undefined;";
+
   return `import { lazy } from "react";
 ${imports.join("\n")}
+${notFoundImport}
 
 ${lazyDecls.join("\n")}
 
 export const routes = [
 ${routeDefs.join(",\n")}
 ];
+${notFoundExport}
 `;
 }
