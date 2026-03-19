@@ -1,11 +1,11 @@
-import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Component, Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type LazyExoticComponent, type ReactNode } from "react";
 import { matchRoute } from "./match";
 
 type LayoutComponent = ComponentType<{ children: ReactNode }>;
 
 interface Route {
   path: string;
-  component: ComponentType;
+  component: ComponentType | LazyExoticComponent<ComponentType>;
   layouts: LayoutComponent[];
   loader?: (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
   action?: (args: { params: Record<string, string>; search: Record<string, string>; formData: FormData }) => Promise<unknown>;
@@ -152,7 +152,12 @@ export function Router({ routes }: RouterProps) {
     content = LoadingComp ? <LoadingComp /> : null;
   } else {
     const Page = matched.route.component;
-    content = <Page />;
+    const LoadingFallback = matched.route.Loading;
+    content = (
+      <Suspense fallback={LoadingFallback ? <LoadingFallback /> : null}>
+        <Page />
+      </Suspense>
+    );
 
     // レンダーエラー用の ErrorBoundary でラップ（key でルート変更時にリセット）
     if (matched.route.ErrorBoundary) {

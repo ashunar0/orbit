@@ -69,7 +69,7 @@ function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): st
 
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
-    imports.push(`import ${componentName} from "${route.filePath}";`);
+    imports.push(`const ${componentName} = lazy(() => import("${route.filePath}"));`);
 
     const layoutNames = route.layouts.map((lp) => getLayoutName(lp));
     const fields: string[] = [
@@ -105,7 +105,8 @@ function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): st
     routeDefs.push(`  { ${fields.join(", ")} }`);
   }
 
-  return `${imports.join("\n")}
+  return `import { lazy } from "react";
+${imports.join("\n")}
 
 export const routes = [
 ${routeDefs.join(",\n")}

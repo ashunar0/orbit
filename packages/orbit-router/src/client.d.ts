@@ -1,9 +1,9 @@
 declare module "virtual:orbit-router/routes" {
-  import type { ComponentType } from "react";
+  import type { ComponentType, LazyExoticComponent } from "react";
 
   interface Route {
     path: string;
-    component: ComponentType;
+    component: ComponentType | LazyExoticComponent<ComponentType>;
     layouts: ComponentType<{ children: React.ReactNode }>[];
     loader?: (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
     action?: (args: { params: Record<string, string>; search: Record<string, string>; formData: FormData }) => Promise<unknown>;
