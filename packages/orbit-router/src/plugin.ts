@@ -47,6 +47,7 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
 
 function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): string {
   const imports: string[] = [];
+  const lazyDecls: string[] = [];
   const routeDefs: string[] = [];
   // layout の重複 import を防ぐ
   const layoutImportMap = new Map<string, string>();
@@ -69,7 +70,7 @@ function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): st
 
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
-    imports.push(`const ${componentName} = lazy(() => import("${route.filePath}"));`);
+    lazyDecls.push(`const ${componentName} = lazy(() => import("${route.filePath}"));`);
 
     const layoutNames = route.layouts.map((lp) => getLayoutName(lp));
     const fields: string[] = [
@@ -107,6 +108,8 @@ function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): st
 
   return `import { lazy } from "react";
 ${imports.join("\n")}
+
+${lazyDecls.join("\n")}
 
 export const routes = [
 ${routeDefs.join(",\n")}

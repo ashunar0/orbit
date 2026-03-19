@@ -54,6 +54,7 @@ export function Router({ routes }: RouterProps) {
     setLoaderData(undefined);
     setActionData(undefined);
     setLoaderError(null);
+    setIsLoading(false);
   };
 
   useEffect(() => {
