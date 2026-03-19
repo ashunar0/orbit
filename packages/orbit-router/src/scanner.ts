@@ -8,6 +8,14 @@ export interface RouteEntry {
   filePath: string;
   /** layout.tsx のフルパス一覧（外側から内側の順） */
   layouts: string[];
+  /** loader.ts のフルパス（存在する場合） */
+  loaderPath?: string;
+  /** action.ts のフルパス（存在する場合） */
+  actionPath?: string;
+  /** loading.tsx のフルパス（存在する場合） */
+  loadingPath?: string;
+  /** error.tsx のフルパス（存在する場合） */
+  errorPath?: string;
 }
 
 /**
@@ -51,11 +59,25 @@ async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Prom
     const urlPath = dirToUrlPath(relativePath);
     const layouts = collectLayouts(dir, routesRoot);
 
-    routes.push({
+    const entry: RouteEntry = {
       path: urlPath,
       filePath: path.join(dir, pageFile.name),
       layouts,
-    });
+    };
+
+    const loaderFile = findFile(dir, "loader");
+    if (loaderFile) entry.loaderPath = loaderFile;
+
+    const actionFile = findFile(dir, "action");
+    if (actionFile) entry.actionPath = actionFile;
+
+    const loadingFile = findFile(dir, "loading");
+    if (loadingFile) entry.loadingPath = loadingFile;
+
+    const errorFile = findFile(dir, "error");
+    if (errorFile) entry.errorPath = errorFile;
+
+    routes.push(entry);
   }
 
   for (const entry of entries) {
@@ -74,7 +96,7 @@ function collectLayouts(dir: string, routesRoot: string): string[] {
   let current = dir;
 
   while (true) {
-    const layoutPath = findLayoutFile(current);
+    const layoutPath = findFile(current, "layout");
     if (layoutPath) {
       layouts.push(layoutPath);
     }
@@ -88,9 +110,9 @@ function collectLayouts(dir: string, routesRoot: string): string[] {
   return layouts;
 }
 
-function findLayoutFile(dir: string): string | undefined {
+function findFile(dir: string, name: string): string | undefined {
   for (const ext of [".tsx", ".ts"]) {
-    const p = path.join(dir, `layout${ext}`);
+    const p = path.join(dir, `${name}${ext}`);
     if (fs.existsSync(p)) return p;
   }
   return undefined;

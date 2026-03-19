@@ -61,14 +61,47 @@ function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): st
     return name;
   }
 
+  let loaderCounter = 0;
+  let actionCounter = 0;
+  let loadingCounter = 0;
+  let errorCounter = 0;
+
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
     imports.push(`import ${componentName} from "${route.filePath}";`);
 
     const layoutNames = route.layouts.map((lp) => getLayoutName(lp));
-    routeDefs.push(
-      `  { path: "${route.path}", component: ${componentName}, layouts: [${layoutNames.join(", ")}] }`,
-    );
+    const fields: string[] = [
+      `path: "${route.path}"`,
+      `component: ${componentName}`,
+      `layouts: [${layoutNames.join(", ")}]`,
+    ];
+
+    if (route.loaderPath) {
+      const name = `loader${loaderCounter++}`;
+      imports.push(`import { loader as ${name} } from "${route.loaderPath}";`);
+      fields.push(`loader: ${name}`);
+    }
+
+    if (route.actionPath) {
+      const name = `action${actionCounter++}`;
+      imports.push(`import { action as ${name} } from "${route.actionPath}";`);
+      fields.push(`action: ${name}`);
+    }
+
+    if (route.loadingPath) {
+      const name = `Loading${loadingCounter++}`;
+      imports.push(`import ${name} from "${route.loadingPath}";`);
+      fields.push(`Loading: ${name}`);
+    }
+
+    if (route.errorPath) {
+      const name = `ErrorBoundary${errorCounter++}`;
+      imports.push(`import ${name} from "${route.errorPath}";`);
+      fields.push(`ErrorBoundary: ${name}`);
+    }
+
+    routeDefs.push(`  { ${fields.join(", ")} }`);
   }
 
   return `${imports.join("\n")}

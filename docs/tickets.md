@@ -24,14 +24,22 @@
 
 ---
 
-## Phase 2: 型安全なデータフェッチ（未着手）
+## Phase 2: 型安全なデータフェッチ
 
-- [ ] **P2-01**: `loader` パターンの設計・実装
-- [ ] **P2-02**: `action` パターンの設計・実装
-- [ ] **P2-03**: Zod Search Params スキーマ統合
-- [ ] **P2-04**: `useLoaderData()` / `useSearch()` hooks
-- [ ] **P2-05**: `loading.tsx` / `error.tsx` の規約実装
-- [ ] **P2-06**: 型の自動推論（params → loader → component）
+### 設計方針（確定）
+- loader/action は別ファイル（`loader.ts` / `action.ts`）— 推奨パス（convention over configuration）
+- 型の接続は `useLoaderData<typeof loader>()` + `import type`
+- Zod スキーマは loader.ts / action.ts にコロケーション
+- loading.tsx なし → 白画面、error.tsx なし → 親を探す → なければクラッシュ
+- 既存ライブラリ（React Hook Form, SWR 等）との互換性あり
+
+### チケット
+- [ ] **P2-01**: scanner 拡張 — `loader.ts` / `action.ts` / `loading.tsx` / `error.tsx` の検出
+- [ ] **P2-02**: plugin 拡張 — 仮想モジュール生成に loader/action/loading/error を追加
+- [ ] **P2-03**: router 拡張 — loader 呼び出し + loading/error 表示の仕組み
+- [ ] **P2-04**: hooks 追加 — `useLoaderData()` / `useActionData()` / `useSearch()`
+- [ ] **P2-05**: Zod 統合 — params / search params のバリデーション
+- [ ] **P2-06**: playground デモ — loader/action/loading/error の動作確認
 - [ ] **P2-07**: テスト整備
 
 ---
