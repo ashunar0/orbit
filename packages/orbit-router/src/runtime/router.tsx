@@ -64,7 +64,9 @@ export function Router({ routes, NotFound }: RouterProps) {
   const [loaderError, setLoaderError] = useState<Error | null>(null);
   const [navigationState, setNavigationState] = useState<NavigationState>("idle");
   const [loaderKey, setLoaderKey] = useState(0);
-  const prefetchCache = useRef(new Map<string, unknown>());
+  const PREFETCH_TTL = 30_000; // 30秒
+  const prefetchCache = useRef(new Map<string, { data: unknown; cachedAt: number }>());
+  const prefetchInFlight = useRef(new Set<string>());
 
   const committedUrlRef = useRef(committedUrl);
   committedUrlRef.current = committedUrl;
@@ -74,35 +76,26 @@ export function Router({ routes, NotFound }: RouterProps) {
   const committedParams = useMemo(() => committedMatched?.params ?? {}, [committedMatched]);
   const committedSearch = useMemo(() => parseSearchParams(committedUrl), [committedUrl]);
 
-  // popstate 対応
-  useEffect(() => {
-    const onPopState = () => {
-      const url = window.location.pathname + window.location.search;
-      startNavigation(url);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [routes]);
-
   // ナビゲーション開始: キャッシュヒット → 即コミット、loader あり → pending、なし → 即コミット
   const startNavigation = useCallback((to: string) => {
     const toPath = to.split("?")[0];
     const toMatched = findMatchedRoute(routes, toPath);
 
     if (toMatched?.route.loader) {
-      // prefetch キャッシュを確認
-      const cached = prefetchCache.current.get(to);
-      if (cached !== undefined) {
+      // prefetch キャッシュを確認（TTL 内のみ有効）
+      const entry = prefetchCache.current.get(to);
+      if (entry && Date.now() - entry.cachedAt < PREFETCH_TTL) {
         prefetchCache.current.delete(to);
         setPendingUrl(null);
         pendingUrlRef.current = null;
         setCommittedUrl(to);
-        setLoaderData(cached);
+        setLoaderData(entry.data);
         setLoaderError(null);
         setActionData(undefined);
         setNavigationState("idle");
         return;
       }
+      prefetchCache.current.delete(to); // TTL 切れのエントリを削除
       // loader あり → pending にして裏で実行
       setPendingUrl(to);
       pendingUrlRef.current = to;
@@ -119,6 +112,16 @@ export function Router({ routes, NotFound }: RouterProps) {
     }
   }, [routes]);
 
+  // popstate 対応
+  useEffect(() => {
+    const onPopState = () => {
+      const url = window.location.pathname + window.location.search;
+      startNavigation(url);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [startNavigation]);
+
   const navigate = useCallback((to: string) => {
     if (to === committedUrlRef.current && !pendingUrlRef.current) return;
     window.history.pushState(null, "", to);
@@ -126,16 +129,22 @@ export function Router({ routes, NotFound }: RouterProps) {
   }, [startNavigation]);
 
   const prefetch = useCallback((to: string) => {
-    if (prefetchCache.current.has(to)) return;
+    if (prefetchCache.current.has(to) || prefetchInFlight.current.has(to)) return;
     const toPath = to.split("?")[0];
     const toMatched = findMatchedRoute(routes, toPath);
     if (!toMatched?.route.loader) return;
 
+    prefetchInFlight.current.add(to);
     const toParams = toMatched.params;
     const toSearch = parseSearchParams(to);
     toMatched.route.loader({ params: toParams, search: toSearch }).then(
-      (data) => { prefetchCache.current.set(to, data); },
-      () => { /* prefetch 失敗は無視 — ナビゲーション時に再実行される */ },
+      (data) => {
+        prefetchCache.current.set(to, { data, cachedAt: Date.now() });
+        prefetchInFlight.current.delete(to);
+      },
+      () => {
+        prefetchInFlight.current.delete(to);
+      },
     );
   }, [routes]);
 
