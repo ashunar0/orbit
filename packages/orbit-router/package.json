@@ -22,11 +22,13 @@
     "prepublishOnly": "pnpm run build"
   },
   "devDependencies": {
+    "@testing-library/react": "catalog:",
     "@types/node": "^25.5.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@typescript/native-preview": "7.0.0-dev.20260316.1",
     "bumpp": "^11.0.1",
+    "happy-dom": "catalog:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.9.3",
