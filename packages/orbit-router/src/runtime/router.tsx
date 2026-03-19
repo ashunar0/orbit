@@ -106,11 +106,12 @@ export function Router({ routes }: RouterProps) {
   }, [currentUrl, loaderKey]);
 
   const submitAction = useCallback(async (formData: FormData) => {
-    if (!matched?.route.action) {
+    const action = matched?.route.action;
+    if (!action) {
       throw new Error("この route に action が定義されていません");
     }
     const currentRoute = matched.route;
-    const result = await currentRoute.action({ params, search, formData });
+    const result = await action({ params, search, formData });
     // ナビゲーション済みなら state を更新しない
     if (matched?.route === currentRoute) {
       setActionData(result);
