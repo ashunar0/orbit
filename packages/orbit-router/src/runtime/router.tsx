@@ -48,34 +48,24 @@ export function Router({ routes }: RouterProps) {
   };
 
   // ルートマッチング（静的 → 動的の順でスキャン済み）
-  let matchedRoute: Route | undefined;
-  let params: Record<string, string> = {};
-
-  for (const route of routes) {
-    const result = matchRoute(route.path, currentPath);
-    if (result) {
-      matchedRoute = route;
-      params = result.params;
-      break;
-    }
-  }
+  const matched = findMatchedRoute(routes, currentPath);
 
   const ctx = useMemo<RouterContextValue>(
-    () => ({ currentPath, params, navigate }),
-    [currentPath, params],
+    () => ({ currentPath, params: matched?.params ?? {}, navigate }),
+    [currentPath, matched],
   );
 
-  if (!matchedRoute) {
+  if (!matched) {
     return <div>No routes found. Add an index.tsx to src/routes/</div>;
   }
 
   // layouts を外側から内側にネストして描画
   // [RootLayout, UsersLayout] + Page → <RootLayout><UsersLayout><Page /></UsersLayout></RootLayout>
-  const Page = matchedRoute.component;
+  const Page = matched.route.component;
   let content: ReactNode = <Page />;
 
-  for (let i = matchedRoute.layouts.length - 1; i >= 0; i--) {
-    const Layout = matchedRoute.layouts[i];
+  for (let i = matched.route.layouts.length - 1; i >= 0; i--) {
+    const Layout = matched.route.layouts[i];
     content = <Layout>{content}</Layout>;
   }
 
@@ -84,4 +74,15 @@ export function Router({ routes }: RouterProps) {
       {content}
     </RouterContext.Provider>
   );
+}
+
+function findMatchedRoute(
+  routes: Route[],
+  currentPath: string,
+): { route: Route; params: Record<string, string> } | null {
+  for (const route of routes) {
+    const result = matchRoute(route.path, currentPath);
+    if (result) return { route, params: result.params };
+  }
+  return null;
 }

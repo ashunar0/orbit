@@ -44,12 +44,11 @@ export async function scanRoutes(root: string, routesDir: string): Promise<Route
 async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Promise<void> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
 
-  const hasIndex = entries.some((e) => e.isFile() && /^index\.tsx?$/.test(e.name));
+  const indexFile = entries.find((e) => e.isFile() && /^index\.tsx?$/.test(e.name));
 
-  if (hasIndex) {
+  if (indexFile) {
     const relativePath = path.relative(routesRoot, dir);
     const urlPath = dirToUrlPath(relativePath);
-    const indexFile = entries.find((e) => e.isFile() && /^index\.tsx?$/.test(e.name))!;
     const layouts = collectLayouts(dir, routesRoot);
 
     routes.push({

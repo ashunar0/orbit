@@ -66,14 +66,9 @@ function generateRouteModule(routes: Awaited<ReturnType<typeof scanRoutes>>): st
     imports.push(`import ${componentName} from "${route.filePath}";`);
 
     const layoutNames = route.layouts.map((lp) => getLayoutName(lp));
-
-    if (layoutNames.length > 0) {
-      routeDefs.push(
-        `  { path: "${route.path}", component: ${componentName}, layouts: [${layoutNames.join(", ")}] }`,
-      );
-    } else {
-      routeDefs.push(`  { path: "${route.path}", component: ${componentName}, layouts: [] }`);
-    }
+    routeDefs.push(
+      `  { path: "${route.path}", component: ${componentName}, layouts: [${layoutNames.join(", ")}] }`,
+    );
   }
 
   return `${imports.join("\n")}
