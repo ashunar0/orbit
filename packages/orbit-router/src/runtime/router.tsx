@@ -137,7 +137,7 @@ export function Router({ routes }: RouterProps) {
     } else {
       throw loaderError;
     }
-  } else if (isLoading) {
+  } else if (isLoading || (matched.route.loader && loaderData === undefined)) {
     const LoadingComp = matched.route.Loading;
     content = LoadingComp ? <LoadingComp /> : null;
   } else {

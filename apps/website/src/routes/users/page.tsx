@@ -16,6 +16,9 @@ export default function Users() {
             <Link href={`/users/${u.id}`}>{u.name}</Link>
           </li>
         ))}
+        <li>
+          <Link href="/users/999">Unknown user (error demo)</Link>
+        </li>
       </ul>
     </div>
   );
