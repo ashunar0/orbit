@@ -77,17 +77,24 @@ export function Router({ routes }: RouterProps) {
   const search = useMemo(() => parseSearchParams(currentUrl), [currentUrl]);
 
   // loader 呼び出し
+  const prevUrlRef = useRef(currentUrl);
   useEffect(() => {
     if (!matched?.route.loader) {
       setLoaderData(undefined);
       setLoaderError(null);
       setIsLoading(false);
+      prevUrlRef.current = currentUrl;
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
+    // ナビゲーション時のみ Loading を表示。action 後の再実行では前のデータを維持する
+    const isNavigation = currentUrl !== prevUrlRef.current;
+    if (isNavigation || loaderData === undefined) {
+      setIsLoading(true);
+    }
     setLoaderError(null);
+    prevUrlRef.current = currentUrl;
 
     matched.route.loader({ params, search }).then(
       (data) => {
