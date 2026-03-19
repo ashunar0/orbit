@@ -1,5 +1,5 @@
 import type { ZodType } from "zod";
-import { useRouterContext } from "./router";
+import { useRouterContext, type NavigationState } from "./router";
 
 export function useParams(): Record<string, string> {
   return useRouterContext().params;
@@ -56,4 +56,27 @@ export function useSearchParams(schema?: ZodType): unknown {
   const raw = useRouterContext().search;
   if (!schema) return raw;
   return schema.parse(raw);
+}
+
+/**
+ * ナビゲーションの状態を取得する。
+ *
+ * @example
+ * const { state } = useNavigation()
+ * // state: "idle" | "loading" | "submitting"
+ */
+export function useNavigation(): { state: NavigationState } {
+  const { navigationState } = useRouterContext();
+  return { state: navigationState };
+}
+
+/**
+ * プログラム的にナビゲーションする関数を取得する。
+ *
+ * @example
+ * const navigate = useNavigate()
+ * navigate("/users/1")
+ */
+export function useNavigate(): (to: string) => void {
+  return useRouterContext().navigate;
 }

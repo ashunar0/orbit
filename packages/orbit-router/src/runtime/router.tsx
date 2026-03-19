@@ -13,6 +13,8 @@ interface Route {
   ErrorBoundary?: ComponentType<{ error: Error }>;
 }
 
+export type NavigationState = "idle" | "loading" | "submitting";
+
 interface RouterContextValue {
   currentPath: string;
   params: Record<string, string>;
@@ -21,6 +23,7 @@ interface RouterContextValue {
   loaderData: unknown;
   actionData: unknown;
   submitAction: (formData: FormData) => Promise<void>;
+  navigationState: NavigationState;
 }
 
 const RouterContext = createContext<RouterContextValue | null>(null);
@@ -38,137 +41,232 @@ interface RouterProps {
 }
 
 export function Router({ routes }: RouterProps) {
-  const [currentUrl, setCurrentUrl] = useState(() => window.location.pathname + window.location.search);
-  const currentPath = useMemo(() => currentUrl.split("?")[0], [currentUrl]);
-  const currentUrlRef = useRef(currentUrl);
-  currentUrlRef.current = currentUrl;
+  // committedUrl = 表示中のルート、pendingUrl = 遷移先（loader 実行中）
+  const [committedUrl, setCommittedUrl] = useState(() => window.location.pathname + window.location.search);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const pendingUrlRef = useRef<string | null>(null);
   const [loaderData, setLoaderData] = useState<unknown>(undefined);
   const [actionData, setActionData] = useState<unknown>(undefined);
   const [loaderError, setLoaderError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  // action 後に loader を再実行するためのキー
+  const [navigationState, setNavigationState] = useState<NavigationState>("idle");
   const [loaderKey, setLoaderKey] = useState(0);
 
-  // ナビゲーション時にステートを即座にクリア（#1, #5: stale data / error flash 防止）
-  const clearRouteState = () => {
-    setLoaderData(undefined);
-    setActionData(undefined);
-    setLoaderError(null);
-    setIsLoading(false);
-  };
+  const committedUrlRef = useRef(committedUrl);
+  committedUrlRef.current = committedUrl;
 
+  const committedPath = useMemo(() => committedUrl.split("?")[0], [committedUrl]);
+  const committedMatched = findMatchedRoute(routes, committedPath);
+  const committedParams = useMemo(() => committedMatched?.params ?? {}, [committedMatched]);
+  const committedSearch = useMemo(() => parseSearchParams(committedUrl), [committedUrl]);
+
+  // popstate 対応
   useEffect(() => {
     const onPopState = () => {
-      clearRouteState();
-      setCurrentUrl(window.location.pathname + window.location.search);
+      const url = window.location.pathname + window.location.search;
+      startNavigation(url);
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, []);
+  }, [routes]);
 
-  const navigate = useCallback((to: string) => {
-    if (to === currentUrl) return;
-    clearRouteState();
-    window.history.pushState(null, "", to);
-    setCurrentUrl(to);
-  }, [currentUrl]);
+  // ナビゲーション開始: loader があれば pending、なければ即コミット
+  const startNavigation = useCallback((to: string) => {
+    const toPath = to.split("?")[0];
+    const toMatched = findMatchedRoute(routes, toPath);
 
-  const matched = findMatchedRoute(routes, currentPath);
-  const params = useMemo(() => matched?.params ?? {}, [matched]);
-  const search = useMemo(() => parseSearchParams(currentUrl), [currentUrl]);
-
-  // loader 呼び出し
-  const prevUrlRef = useRef(currentUrl);
-  useEffect(() => {
-    if (!matched?.route.loader) {
+    if (toMatched?.route.loader) {
+      // loader あり → pending にして裏で実行
+      setPendingUrl(to);
+      pendingUrlRef.current = to;
+      setNavigationState("loading");
+    } else {
+      // loader なし → 即コミット
+      setPendingUrl(null);
+      pendingUrlRef.current = null;
+      setCommittedUrl(to);
       setLoaderData(undefined);
       setLoaderError(null);
-      setIsLoading(false);
-      prevUrlRef.current = currentUrl;
+      setActionData(undefined);
+      setNavigationState("idle");
+    }
+  }, [routes]);
+
+  const navigate = useCallback((to: string) => {
+    if (to === committedUrlRef.current && !pendingUrlRef.current) return;
+    window.history.pushState(null, "", to);
+    startNavigation(to);
+  }, [startNavigation]);
+
+  // pending ルートの loader 実行
+  useEffect(() => {
+    if (!pendingUrl) return;
+
+    const pendingPath = pendingUrl.split("?")[0];
+    const pendingMatched = findMatchedRoute(routes, pendingPath);
+
+    if (!pendingMatched?.route.loader) {
+      // loader がない（popstate 等で来た場合のフォールバック）
+      setCommittedUrl(pendingUrl);
+      setPendingUrl(null);
+      pendingUrlRef.current = null;
+      setLoaderData(undefined);
+      setLoaderError(null);
+      setNavigationState("idle");
       return;
     }
 
     let cancelled = false;
-    // ナビゲーション時のみ Loading を表示。action 後の再実行では前のデータを維持する
-    const isNavigation = currentUrl !== prevUrlRef.current;
-    if (isNavigation || loaderData === undefined) {
-      setIsLoading(true);
-    }
-    setLoaderError(null);
-    prevUrlRef.current = currentUrl;
+    const pendingParams = pendingMatched.params;
+    const pendingSearch = parseSearchParams(pendingUrl);
 
-    matched.route.loader({ params, search }).then(
+    const targetUrl = pendingUrl;
+    pendingMatched.route.loader({ params: pendingParams, search: pendingSearch }).then(
+      (data) => {
+        if (cancelled) return;
+        // C-1: popstate で URL が変わっていたらコミットしない
+        const currentBrowserUrl = window.location.pathname + window.location.search;
+        if (currentBrowserUrl !== targetUrl) return;
+        setCommittedUrl(targetUrl);
+        setPendingUrl(null);
+        pendingUrlRef.current = null;
+        setLoaderData(data);
+        setLoaderError(null);
+        setNavigationState("idle");
+      },
+      (err) => {
+        if (cancelled) return;
+        const currentBrowserUrl = window.location.pathname + window.location.search;
+        if (currentBrowserUrl !== targetUrl) return;
+        setCommittedUrl(targetUrl);
+        setPendingUrl(null);
+        pendingUrlRef.current = null;
+        setLoaderError(err instanceof Error ? err : new Error(String(err)));
+        setNavigationState("idle");
+      },
+    );
+
+    return () => { cancelled = true; };
+  }, [pendingUrl]);
+
+  // action 後の loader 再実行（loaderKey でトリガー）
+  useEffect(() => {
+    if (loaderKey === 0) return; // 初回は実行しない
+    if (!committedMatched?.route.loader) return;
+
+    let cancelled = false;
+    committedMatched.route.loader({ params: committedParams, search: committedSearch }).then(
       (data) => {
         if (!cancelled) {
           setLoaderData(data);
-          setIsLoading(false);
         }
       },
       (err) => {
         if (!cancelled) {
           setLoaderError(err instanceof Error ? err : new Error(String(err)));
-          setIsLoading(false);
         }
       },
     );
 
     return () => { cancelled = true; };
-  }, [currentUrl, loaderKey]);
+  }, [loaderKey]);
+
+  // 初回 loader 実行（ページロード時）
+  useEffect(() => {
+    if (!committedMatched?.route.loader) return;
+    if (loaderData !== undefined) return; // 既にデータがある
+
+    let cancelled = false;
+    setNavigationState("loading");
+
+    committedMatched.route.loader({ params: committedParams, search: committedSearch }).then(
+      (data) => {
+        if (!cancelled) {
+          setLoaderData(data);
+          setNavigationState("idle");
+        }
+      },
+      (err) => {
+        if (!cancelled) {
+          setLoaderError(err instanceof Error ? err : new Error(String(err)));
+          setNavigationState("idle");
+        }
+      },
+    );
+
+    return () => { cancelled = true; };
+  }, []);
 
   const submitAction = useCallback(async (formData: FormData) => {
-    const action = matched?.route.action;
+    const action = committedMatched?.route.action;
     if (!action) {
       throw new Error("この route に action が定義されていません");
     }
-    const urlAtSubmit = currentUrlRef.current;
-    const result = await action({ params, search, formData });
-    // ナビゲーション済みなら state を更新しない
-    if (currentUrlRef.current === urlAtSubmit) {
-      setActionData(result);
-      setLoaderKey((k) => k + 1);
+    const urlAtSubmit = committedUrlRef.current;
+    setNavigationState("submitting");
+    try {
+      const result = await action({ params: committedParams, search: committedSearch, formData });
+      if (committedUrlRef.current === urlAtSubmit) {
+        setActionData(result);
+        setNavigationState("idle");
+        setLoaderKey((k) => k + 1);
+      }
+    } catch (err) {
+      if (committedUrlRef.current === urlAtSubmit) {
+        setNavigationState("idle");
+      }
+      throw err;
     }
-  }, [matched, params, search]);
+  }, [committedMatched, committedParams, committedSearch]);
 
   const ctx = useMemo<RouterContextValue>(
-    () => ({ currentPath, params, search, navigate, loaderData, actionData, submitAction }),
-    [currentPath, params, search, navigate, loaderData, actionData, submitAction],
+    () => ({
+      currentPath: committedPath,
+      params: committedParams,
+      search: committedSearch,
+      navigate,
+      loaderData,
+      actionData,
+      submitAction,
+      navigationState,
+    }),
+    [committedPath, committedParams, committedSearch, navigate, loaderData, actionData, submitAction, navigationState],
   );
 
-  if (!matched) {
+  if (!committedMatched) {
     return <div>No routes found. Add a page.tsx to src/routes/</div>;
   }
 
-  // ページコンテンツを決定（エラー → ローディング → 通常の優先度）
+  // ページコンテンツを決定
   let content: ReactNode;
 
   if (loaderError) {
-    const ErrorComp = matched.route.ErrorBoundary;
+    const ErrorComp = committedMatched.route.ErrorBoundary;
     if (ErrorComp) {
       content = <ErrorComp error={loaderError} />;
     } else {
       throw loaderError;
     }
-  } else if (isLoading || (matched.route.loader && loaderData === undefined)) {
-    const LoadingComp = matched.route.Loading;
+  } else if (committedMatched.route.loader && loaderData === undefined) {
+    // 初回ロード中（まだ一度も loader が完了していない）
+    const LoadingComp = committedMatched.route.Loading;
     content = LoadingComp ? <LoadingComp /> : null;
   } else {
-    const Page = matched.route.component;
-    const LoadingFallback = matched.route.Loading;
+    const Page = committedMatched.route.component;
+    const LoadingFallback = committedMatched.route.Loading;
     content = (
       <Suspense fallback={LoadingFallback ? <LoadingFallback /> : null}>
         <Page />
       </Suspense>
     );
 
-    // レンダーエラー用の ErrorBoundary でラップ（key でルート変更時にリセット）
-    if (matched.route.ErrorBoundary) {
-      content = <RouteErrorBoundary key={currentPath} fallback={matched.route.ErrorBoundary}>{content}</RouteErrorBoundary>;
+    if (committedMatched.route.ErrorBoundary) {
+      content = <RouteErrorBoundary key={committedPath} fallback={committedMatched.route.ErrorBoundary}>{content}</RouteErrorBoundary>;
     }
   }
 
-  // layouts を外側から内側にネストして描画（エラー・ローディング時も layout は残る）
-  for (let i = matched.route.layouts.length - 1; i >= 0; i--) {
-    const Layout = matched.route.layouts[i];
+  // layouts を外側から内側にネストして描画
+  for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
+    const Layout = committedMatched.route.layouts[i];
     content = <Layout>{content}</Layout>;
   }
 
