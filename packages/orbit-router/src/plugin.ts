@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { Plugin } from "vite";
 import { scanRoutes } from "./scanner";
 
@@ -31,7 +32,7 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
         }
       },
       handleHotUpdate({ file, server }) {
-        const routesPath = `${root}/${routesDir}`;
+        const routesPath = path.resolve(root, routesDir);
         if (file.startsWith(routesPath)) {
           const mod = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
           if (mod) {

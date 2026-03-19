@@ -103,15 +103,17 @@ export function Router({ routes }: RouterProps) {
     return () => { cancelled = true; };
   }, [currentPath, loaderKey]);
 
-  // #2, #3: submitAction を useCallback で安定化 + loaderKey で再実行（キャンセルガード付き）
   const submitAction = useCallback(async (formData: FormData) => {
     if (!matched?.route.action) {
       throw new Error("この route に action が定義されていません");
     }
-    const result = await matched.route.action({ params, formData });
-    setActionData(result);
-    // loader の再実行は effect に委譲（キャンセルガードが効く）
-    setLoaderKey((k) => k + 1);
+    const currentRoute = matched.route;
+    const result = await currentRoute.action({ params, formData });
+    // ナビゲーション済みなら state を更新しない
+    if (matched?.route === currentRoute) {
+      setActionData(result);
+      setLoaderKey((k) => k + 1);
+    }
   }, [matched, params]);
 
   const ctx = useMemo<RouterContextValue>(
@@ -123,42 +125,33 @@ export function Router({ routes }: RouterProps) {
     return <div>No routes found. Add a page.tsx to src/routes/</div>;
   }
 
-  // エラー状態 → ErrorBoundary を探して表示
+  // ページコンテンツを決定（エラー → ローディング → 通常の優先度）
+  let content: ReactNode;
+
   if (loaderError) {
-    const ErrorComp = findErrorBoundary(matched.route);
+    const ErrorComp = matched.route.ErrorBoundary;
     if (ErrorComp) {
-      return (
-        <RouterContext.Provider value={ctx}>
-          <ErrorComp error={loaderError} />
-        </RouterContext.Provider>
-      );
+      content = <ErrorComp error={loaderError} />;
+    } else {
+      throw loaderError;
     }
-    throw loaderError;
-  }
-
-  // ローディング状態 → Loading コンポーネント or 白画面
-  if (isLoading) {
+  } else if (isLoading) {
     const LoadingComp = matched.route.Loading;
-    return (
-      <RouterContext.Provider value={ctx}>
-        {LoadingComp ? <LoadingComp /> : null}
-      </RouterContext.Provider>
-    );
+    content = LoadingComp ? <LoadingComp /> : null;
+  } else {
+    const Page = matched.route.component;
+    content = <Page />;
+
+    // レンダーエラー用の ErrorBoundary でラップ（key でルート変更時にリセット）
+    if (matched.route.ErrorBoundary) {
+      content = <RouteErrorBoundary key={currentPath} fallback={matched.route.ErrorBoundary}>{content}</RouteErrorBoundary>;
+    }
   }
 
-  // layouts を外側から内側にネストして描画
-  const Page = matched.route.component;
-  let content: ReactNode = <Page />;
-
+  // layouts を外側から内側にネストして描画（エラー・ローディング時も layout は残る）
   for (let i = matched.route.layouts.length - 1; i >= 0; i--) {
     const Layout = matched.route.layouts[i];
     content = <Layout>{content}</Layout>;
-  }
-
-  // #4: key={currentPath} でルート変更時に ErrorBoundary をリセット
-  const RenderErrorComp = findErrorBoundary(matched.route);
-  if (RenderErrorComp) {
-    content = <RouteErrorBoundary key={currentPath} fallback={RenderErrorComp}>{content}</RouteErrorBoundary>;
   }
 
   return (
@@ -166,13 +159,6 @@ export function Router({ routes }: RouterProps) {
       {content}
     </RouterContext.Provider>
   );
-}
-
-/**
- * マッチしたルートの ErrorBoundary を探す。
- */
-function findErrorBoundary(route: Route): ComponentType<{ error: Error }> | undefined {
-  return route.ErrorBoundary;
 }
 
 /**
