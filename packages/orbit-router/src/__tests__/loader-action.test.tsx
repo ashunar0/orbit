@@ -36,9 +36,34 @@ function SearchSchemaPage() {
   return <div>Page: {page}</div>;
 }
 
+function ActionPage() {
+  const data = useLoaderData<typeof actionPageLoader>() as { count: number };
+  const actionResult = useActionData<typeof fakeAction>();
+  const submit = useSubmit();
+
+  return (
+    <div>
+      <div>Count: {data.count}</div>
+      {actionResult && <div>Action result: {String(actionResult.ok)}</div>}
+      <button onClick={() => submit(new FormData())}>Submit</button>
+    </div>
+  );
+}
+
 function RootLayout({ children }: { children: React.ReactNode }) {
   return <div data-testid="layout">{children}</div>;
 }
+
+let actionCallCount = 0;
+
+const actionPageLoader = async () => {
+  return { count: actionCallCount };
+};
+
+const fakeAction = async ({ formData }: { params: Record<string, string>; search: Record<string, string>; formData: FormData }) => {
+  actionCallCount++;
+  return { ok: true };
+};
 
 const fakeLoader = async () => {
   return { message: "hello" };
@@ -90,6 +115,14 @@ const routes = [
     path: "/search-schema",
     component: SearchSchemaPage,
     layouts: [],
+  },
+  {
+    path: "/action",
+    component: ActionPage,
+    layouts: [],
+    loader: actionPageLoader,
+    action: fakeAction,
+    Loading: LoadingComp,
   },
 ];
 
@@ -184,4 +217,46 @@ describe("useSearchParams", () => {
     render(<Router routes={routes} />);
     expect(screen.getByText("Page: 1")).toBeDefined();
   });
+});
+
+describe("Action", () => {
+  beforeEach(() => {
+    actionCallCount = 0;
+    window.history.pushState(null, "", "/");
+  });
+
+  afterEach(cleanup);
+
+  it("calls action and returns result via useActionData", async () => {
+    window.history.pushState(null, "", "/action");
+    render(<Router routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("Count: 0")).toBeDefined();
+    });
+
+    await act(async () => {
+      screen.getByText("Submit").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Action result: true")).toBeDefined();
+    });
+  });
+
+  it("re-runs loader after action completes", async () => {
+    window.history.pushState(null, "", "/action");
+    render(<Router routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("Count: 0")).toBeDefined();
+    });
+
+    await act(async () => {
+      screen.getByText("Submit").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Count: 1")).toBeDefined();
+    });
+  });
+
 });

@@ -1,4 +1,4 @@
-import { Component, createContext, useCallback, useContext, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { matchRoute } from "./match";
 
 type LayoutComponent = ComponentType<{ children: ReactNode }>;
@@ -40,6 +40,8 @@ interface RouterProps {
 export function Router({ routes }: RouterProps) {
   const [currentUrl, setCurrentUrl] = useState(() => window.location.pathname + window.location.search);
   const currentPath = useMemo(() => currentUrl.split("?")[0], [currentUrl]);
+  const currentUrlRef = useRef(currentUrl);
+  currentUrlRef.current = currentUrl;
   const [loaderData, setLoaderData] = useState<unknown>(undefined);
   const [actionData, setActionData] = useState<unknown>(undefined);
   const [loaderError, setLoaderError] = useState<Error | null>(null);
@@ -71,7 +73,7 @@ export function Router({ routes }: RouterProps) {
   }, [currentUrl]);
 
   const matched = findMatchedRoute(routes, currentPath);
-  const params = useMemo(() => matched?.params ?? {}, [currentPath]);
+  const params = useMemo(() => matched?.params ?? {}, [matched]);
   const search = useMemo(() => parseSearchParams(currentUrl), [currentUrl]);
 
   // loader 呼び出し
@@ -110,14 +112,14 @@ export function Router({ routes }: RouterProps) {
     if (!action) {
       throw new Error("この route に action が定義されていません");
     }
-    const currentRoute = matched.route;
+    const urlAtSubmit = currentUrlRef.current;
     const result = await action({ params, search, formData });
     // ナビゲーション済みなら state を更新しない
-    if (matched?.route === currentRoute) {
+    if (currentUrlRef.current === urlAtSubmit) {
       setActionData(result);
       setLoaderKey((k) => k + 1);
     }
-  }, [matched, params]);
+  }, [matched, params, search]);
 
   const ctx = useMemo<RouterContextValue>(
     () => ({ currentPath, params, search, navigate, loaderData, actionData, submitAction }),
