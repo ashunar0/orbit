@@ -92,13 +92,13 @@ Phase 1（CSR-only の最小ルーター）がほぼ完了。
 ### ディレクトリ規約
 
 ```
-routes/index.tsx              → /
+routes/page.tsx              → /
 routes/layout.tsx             → ルートレイアウト
-routes/about/index.tsx        → /about
-routes/users/[id]/index.tsx   → /users/:id
+routes/about/page.tsx        → /about
+routes/users/[id]/page.tsx   → /users/:id
 ```
 
-- `index.tsx` = ページコンポーネント
+- `page.tsx` = ページコンポーネント
 - `layout.tsx` = レイアウト（`{children}` で子を囲む）
 - `[param]` = 動的セグメント
 - `_` 始まりのディレクトリはスキップ

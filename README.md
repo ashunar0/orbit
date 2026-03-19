@@ -7,8 +7,8 @@ Vite + React 向けのディレクトリベースルーター。
 
 ## Features
 
-- **ディレクトリベースルーティング** — `routes/index.tsx` → `/`, `routes/about/index.tsx` → `/about`
-- **動的ルート** — `routes/users/[id]/index.tsx` → `/users/:id`
+- **ディレクトリベースルーティング** — `routes/page.tsx` → `/`, `routes/about/page.tsx` → `/about`
+- **動的ルート** — `routes/users/[id]/page.tsx` → `/users/:id`
 - **ネストレイアウト** — 親ディレクトリの `layout.tsx` を自動収集してネスト描画
 - **SPA ナビゲーション** — `<Link>` コンポーネントで `history.pushState` ベースの遷移
 - **HMR 対応** — `routes/` の変更で自動リロード
@@ -44,14 +44,14 @@ export default defineConfig({
 ```
 src/routes/
 ├── layout.tsx              → ルートレイアウト
-├── index.tsx               → /
+├── page.tsx               → /
 ├── about/
-│   └── index.tsx           → /about
+│   └── page.tsx           → /about
 └── users/
     ├── layout.tsx          → /users 以下のレイアウト
-    ├── index.tsx           → /users
+    ├── page.tsx           → /users
     └── [id]/
-        └── index.tsx       → /users/:id
+        └── page.tsx       → /users/:id
 ```
 
 ### 3. Router をマウント
@@ -84,7 +84,7 @@ function UserPage() {
 
 | ファイル | 役割 |
 |---------|------|
-| `index.tsx` | ページコンポーネント |
+| `page.tsx` | ページコンポーネント |
 | `layout.tsx` | レイアウト（`{children}` で子を囲む） |
 | `[param]/` | 動的セグメント |
 | `_prefix/` | ルーティング対象外 |

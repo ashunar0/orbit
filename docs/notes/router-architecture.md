@@ -24,7 +24,7 @@
 
 `routes/` を再帰的に歩いて `RouteEntry[]` を作る。
 
-- `index.tsx` があるディレクトリ = ルート
+- `page.tsx` があるディレクトリ = ルート
 - `[id]` → `:id` に変換（動的パラメータ）
 - `_` 始まりのディレクトリはスキップ
 - `layout.tsx` は現在のディレクトリから root まで遡って収集（外→内の順）
@@ -36,7 +36,7 @@ scanner の結果を JavaScript コードの文字列に変換する。
 
 ```js
 // こういうコードが自動生成される
-import Route0 from "/path/to/routes/index.tsx";
+import Route0 from "/path/to/routes/page.tsx";
 import Layout0 from "/path/to/routes/layout.tsx";
 
 export const routes = [

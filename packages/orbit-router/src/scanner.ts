@@ -4,7 +4,7 @@ import path from "node:path";
 export interface RouteEntry {
   /** URL パス（例: "/", "/users", "/users/:id"） */
   path: string;
-  /** index.tsx のフルパス */
+  /** page.tsx のフルパス */
   filePath: string;
   /** layout.tsx のフルパス一覧（外側から内側の順） */
   layouts: string[];
@@ -14,9 +14,9 @@ export interface RouteEntry {
  * routes ディレクトリをスキャンしてルート定義を生成する。
  *
  * 規約:
- *   routes/index.tsx       → /
- *   routes/users/index.tsx → /users
- *   routes/users/[id]/index.tsx → /users/:id
+ *   routes/page.tsx       → /
+ *   routes/users/page.tsx → /users
+ *   routes/users/[id]/page.tsx → /users/:id
  */
 export async function scanRoutes(root: string, routesDir: string): Promise<RouteEntry[]> {
   const absoluteRoutesDir = path.resolve(root, routesDir);
@@ -44,16 +44,16 @@ export async function scanRoutes(root: string, routesDir: string): Promise<Route
 async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Promise<void> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
 
-  const indexFile = entries.find((e) => e.isFile() && /^index\.tsx?$/.test(e.name));
+  const pageFile = entries.find((e) => e.isFile() && /^page\.tsx?$/.test(e.name));
 
-  if (indexFile) {
+  if (pageFile) {
     const relativePath = path.relative(routesRoot, dir);
     const urlPath = dirToUrlPath(relativePath);
     const layouts = collectLayouts(dir, routesRoot);
 
     routes.push({
       path: urlPath,
-      filePath: path.join(dir, indexFile.name),
+      filePath: path.join(dir, pageFile.name),
       layouts,
     });
   }

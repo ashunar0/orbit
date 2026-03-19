@@ -56,7 +56,7 @@ export function Router({ routes }: RouterProps) {
   );
 
   if (!matched) {
-    return <div>No routes found. Add an index.tsx to src/routes/</div>;
+    return <div>No routes found. Add a page.tsx to src/routes/</div>;
   }
 
   // layouts を外側から内側にネストして描画

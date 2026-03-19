@@ -26,43 +26,43 @@ describe("scanRoutes", () => {
     expect(routes).toEqual([]);
   });
 
-  it("scans root index", async () => {
-    createFile("index.tsx");
+  it("scans root page", async () => {
+    createFile("page.tsx");
     const routes = await scanRoutes(tmpDir, "routes");
     expect(routes).toHaveLength(1);
     expect(routes[0].path).toBe("/");
   });
 
   it("scans nested static route", async () => {
-    createFile("index.tsx");
-    createFile("about/index.tsx");
+    createFile("page.tsx");
+    createFile("about/page.tsx");
     const routes = await scanRoutes(tmpDir, "routes");
     expect(routes.map((r) => r.path)).toContain("/about");
   });
 
   it("converts [param] to :param", async () => {
-    createFile("users/[id]/index.tsx");
+    createFile("users/[id]/page.tsx");
     const routes = await scanRoutes(tmpDir, "routes");
     expect(routes.some((r) => r.path === "/users/:id")).toBe(true);
   });
 
   it("sorts static routes before dynamic routes", async () => {
-    createFile("users/index.tsx");
-    createFile("users/[id]/index.tsx");
+    createFile("users/page.tsx");
+    createFile("users/[id]/page.tsx");
     const routes = await scanRoutes(tmpDir, "routes");
     const paths = routes.map((r) => r.path);
     expect(paths.indexOf("/users")).toBeLessThan(paths.indexOf("/users/:id"));
   });
 
   it("skips directories starting with _", async () => {
-    createFile("_hidden/index.tsx");
-    createFile("about/index.tsx");
+    createFile("_hidden/page.tsx");
+    createFile("about/page.tsx");
     const routes = await scanRoutes(tmpDir, "routes");
     expect(routes.every((r) => !r.path.includes("hidden"))).toBe(true);
   });
 
   it("collects layout from current directory", async () => {
-    createFile("index.tsx");
+    createFile("page.tsx");
     createFile("layout.tsx", "export default ({ children }) => children");
     const routes = await scanRoutes(tmpDir, "routes");
     expect(routes[0].layouts).toHaveLength(1);
@@ -72,7 +72,7 @@ describe("scanRoutes", () => {
   it("collects nested layouts in outer-to-inner order", async () => {
     createFile("layout.tsx");
     createFile("users/layout.tsx");
-    createFile("users/[id]/index.tsx");
+    createFile("users/[id]/page.tsx");
     const routes = await scanRoutes(tmpDir, "routes");
     const userRoute = routes.find((r) => r.path === "/users/:id");
     expect(userRoute).toBeDefined();
@@ -84,8 +84,8 @@ describe("scanRoutes", () => {
     );
   });
 
-  it("handles .ts extension for index files", async () => {
-    createFile("index.ts");
+  it("handles .ts extension for page files", async () => {
+    createFile("page.ts");
     const routes = await scanRoutes(tmpDir, "routes");
     expect(routes).toHaveLength(1);
     expect(routes[0].path).toBe("/");
