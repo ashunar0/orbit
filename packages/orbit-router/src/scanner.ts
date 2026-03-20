@@ -135,11 +135,14 @@ function findFile(dir: string, name: string): string | undefined {
 function dirToUrlPath(relativePath: string): string {
   if (relativePath === "") return "/";
 
-  const segments = relativePath.split(path.sep).map((seg) => {
-    // [id] → :id
-    const match = seg.match(/^\[(.+)]$/);
-    return match ? `:${match[1]}` : seg;
-  });
+  const segments = relativePath
+    .split(path.sep)
+    .filter((seg) => !/^\(.+\)$/.test(seg)) // (group) → URL に含めない
+    .map((seg) => {
+      // [id] → :id
+      const match = seg.match(/^\[(.+)]$/);
+      return match ? `:${match[1]}` : seg;
+    });
 
-  return `/${segments.join("/")}`;
+  return segments.length === 0 ? "/" : `/${segments.join("/")}`;
 }
