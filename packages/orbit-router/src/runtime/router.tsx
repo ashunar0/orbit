@@ -1,12 +1,16 @@
 import { Component, Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type LazyExoticComponent, type ReactNode } from "react";
 import { matchRoute } from "./match";
+import { isRedirectError } from "./redirect";
 
 type LayoutComponent = ComponentType<{ children: ReactNode }>;
+
+type GuardFunction = (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<void>;
 
 interface Route {
   path: string;
   component: ComponentType | LazyExoticComponent<ComponentType>;
   layouts: LayoutComponent[];
+  guards: GuardFunction[];
   loader?: (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
   action?: (args: { params: Record<string, string>; search: Record<string, string>; formData: FormData }) => Promise<unknown>;
   Loading?: ComponentType;
@@ -25,7 +29,7 @@ export interface RouterStateContextValue {
 }
 
 export interface RouterDispatchContextValue {
-  navigate: (to: string) => void;
+  navigate: (to: string | number, options?: { replace?: boolean }) => void;
   submitAction: (formData: FormData) => Promise<void>;
   prefetch: (to: string) => void;
 }
@@ -76,32 +80,36 @@ export function Router({ routes, NotFound }: RouterProps) {
   const committedParams = useMemo(() => committedMatched?.params ?? {}, [committedMatched]);
   const committedSearch = useMemo(() => parseSearchParams(committedUrl), [committedUrl]);
 
-  // ナビゲーション開始: キャッシュヒット → 即コミット、loader あり → pending、なし → 即コミット
+  // ナビゲーション開始: キャッシュヒット → 即コミット、guard/loader あり → pending、なし → 即コミット
   const startNavigation = useCallback((to: string) => {
     const toPath = to.split("?")[0];
     const toMatched = findMatchedRoute(routes, toPath);
+    const hasGuards = toMatched && toMatched.route.guards.length > 0;
+    const hasLoader = toMatched?.route.loader;
 
-    if (toMatched?.route.loader) {
-      // prefetch キャッシュを確認（TTL 内のみ有効）
-      const entry = prefetchCache.current.get(to);
-      if (entry && Date.now() - entry.cachedAt < PREFETCH_TTL) {
-        prefetchCache.current.delete(to);
-        setPendingUrl(null);
-        pendingUrlRef.current = null;
-        setCommittedUrl(to);
-        setLoaderData(entry.data);
-        setLoaderError(null);
-        setActionData(undefined);
-        setNavigationState("idle");
-        return;
+    if (hasLoader || hasGuards) {
+      // prefetch キャッシュを確認（TTL 内のみ有効、guard なしの場合のみ）
+      if (!hasGuards) {
+        const entry = prefetchCache.current.get(to);
+        if (entry && Date.now() - entry.cachedAt < PREFETCH_TTL) {
+          prefetchCache.current.delete(to);
+          setPendingUrl(null);
+          pendingUrlRef.current = null;
+          setCommittedUrl(to);
+          setLoaderData(entry.data);
+          setLoaderError(null);
+          setActionData(undefined);
+          setNavigationState("idle");
+          return;
+        }
+        prefetchCache.current.delete(to); // TTL 切れのエントリを削除
       }
-      prefetchCache.current.delete(to); // TTL 切れのエントリを削除
-      // loader あり → pending にして裏で実行
+      // guard/loader あり → pending にして裏で実行
       setPendingUrl(to);
       pendingUrlRef.current = to;
       setNavigationState("loading");
     } else {
-      // loader なし → 即コミット
+      // guard も loader もなし → 即コミット
       setPendingUrl(null);
       pendingUrlRef.current = null;
       setCommittedUrl(to);
@@ -122,9 +130,17 @@ export function Router({ routes, NotFound }: RouterProps) {
     return () => window.removeEventListener("popstate", onPopState);
   }, [startNavigation]);
 
-  const navigate = useCallback((to: string) => {
+  const navigate = useCallback((to: string | number, options?: { replace?: boolean }) => {
+    if (typeof to === "number") {
+      window.history.go(to);
+      return;
+    }
     if (to === committedUrlRef.current && !pendingUrlRef.current) return;
-    window.history.pushState(null, "", to);
+    if (options?.replace) {
+      window.history.replaceState(null, "", to);
+    } else {
+      window.history.pushState(null, "", to);
+    }
     startNavigation(to);
   }, [startNavigation]);
 
@@ -148,15 +164,14 @@ export function Router({ routes, NotFound }: RouterProps) {
     );
   }, [routes]);
 
-  // pending ルートの loader 実行
+  // pending ルートの guard → loader 実行
   useEffect(() => {
     if (!pendingUrl) return;
 
     const pendingPath = pendingUrl.split("?")[0];
     const pendingMatched = findMatchedRoute(routes, pendingPath);
 
-    if (!pendingMatched?.route.loader) {
-      // loader がない（popstate 等で来た場合のフォールバック）
+    if (!pendingMatched) {
       setCommittedUrl(pendingUrl);
       setPendingUrl(null);
       pendingUrlRef.current = null;
@@ -169,32 +184,48 @@ export function Router({ routes, NotFound }: RouterProps) {
     let cancelled = false;
     const pendingParams = pendingMatched.params;
     const pendingSearch = parseSearchParams(pendingUrl);
-
     const targetUrl = pendingUrl;
-    pendingMatched.route.loader({ params: pendingParams, search: pendingSearch }).then(
-      (data) => {
+    const args = { params: pendingParams, search: pendingSearch };
+
+    (async () => {
+      // guard を外側から順に実行
+      for (const guard of pendingMatched.route.guards) {
         if (cancelled) return;
-        // C-1: popstate で URL が変わっていたらコミットしない
-        const currentBrowserUrl = window.location.pathname + window.location.search;
-        if (currentBrowserUrl !== targetUrl) return;
-        setCommittedUrl(targetUrl);
+        await guard(args);
+      }
+
+      // loader を実行
+      const data = pendingMatched.route.loader
+        ? await pendingMatched.route.loader(args)
+        : undefined;
+
+      if (cancelled) return;
+      const currentBrowserUrl = window.location.pathname + window.location.search;
+      if (currentBrowserUrl !== targetUrl) return;
+      setCommittedUrl(targetUrl);
+      setPendingUrl(null);
+      pendingUrlRef.current = null;
+      setLoaderData(data);
+      setLoaderError(null);
+      setNavigationState("idle");
+    })().catch((err) => {
+      if (cancelled) return;
+      // redirect を catch → navigate で飛ばす
+      if (isRedirectError(err)) {
         setPendingUrl(null);
         pendingUrlRef.current = null;
-        setLoaderData(data);
-        setLoaderError(null);
         setNavigationState("idle");
-      },
-      (err) => {
-        if (cancelled) return;
-        const currentBrowserUrl = window.location.pathname + window.location.search;
-        if (currentBrowserUrl !== targetUrl) return;
-        setCommittedUrl(targetUrl);
-        setPendingUrl(null);
-        pendingUrlRef.current = null;
-        setLoaderError(err instanceof Error ? err : new Error(String(err)));
-        setNavigationState("idle");
-      },
-    );
+        navigate(err.to, { replace: err.replace });
+        return;
+      }
+      const currentBrowserUrl = window.location.pathname + window.location.search;
+      if (currentBrowserUrl !== targetUrl) return;
+      setCommittedUrl(targetUrl);
+      setPendingUrl(null);
+      pendingUrlRef.current = null;
+      setLoaderError(err instanceof Error ? err : new Error(String(err)));
+      setNavigationState("idle");
+    });
 
     return () => { cancelled = true; };
   }, [pendingUrl]);
@@ -221,28 +252,43 @@ export function Router({ routes, NotFound }: RouterProps) {
     return () => { cancelled = true; };
   }, [loaderKey]);
 
-  // 初回 loader 実行（ページロード時）
+  // 初回 guard + loader 実行（ページロード時）
   useEffect(() => {
-    if (!committedMatched?.route.loader) return;
+    const hasGuards = committedMatched && committedMatched.route.guards.length > 0;
+    const hasLoader = committedMatched?.route.loader;
+    if (!hasGuards && !hasLoader) return;
     if (loaderData !== undefined) return; // 既にデータがある
 
     let cancelled = false;
     setNavigationState("loading");
+    const args = { params: committedParams, search: committedSearch };
 
-    committedMatched.route.loader({ params: committedParams, search: committedSearch }).then(
-      (data) => {
-        if (!cancelled) {
-          setLoaderData(data);
-          setNavigationState("idle");
+    (async () => {
+      if (committedMatched) {
+        for (const guard of committedMatched.route.guards) {
+          if (cancelled) return;
+          await guard(args);
         }
-      },
-      (err) => {
-        if (!cancelled) {
-          setLoaderError(err instanceof Error ? err : new Error(String(err)));
-          setNavigationState("idle");
-        }
-      },
-    );
+      }
+
+      const data = committedMatched?.route.loader
+        ? await committedMatched.route.loader(args)
+        : undefined;
+
+      if (!cancelled) {
+        setLoaderData(data);
+        setNavigationState("idle");
+      }
+    })().catch((err) => {
+      if (cancelled) return;
+      if (isRedirectError(err)) {
+        setNavigationState("idle");
+        navigate(err.to, { replace: err.replace });
+        return;
+      }
+      setLoaderError(err instanceof Error ? err : new Error(String(err)));
+      setNavigationState("idle");
+    });
 
     return () => { cancelled = true; };
   }, []);

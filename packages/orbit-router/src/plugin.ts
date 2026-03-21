@@ -58,12 +58,12 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
   const layoutImportMap = new Map<string, string>();
   let layoutCounter = 0;
 
-  function getLayoutName(layoutPath: string): string {
+  function getLayoutModName(layoutPath: string): string {
     let name = layoutImportMap.get(layoutPath);
     if (!name) {
-      name = `Layout${layoutCounter++}`;
+      name = `LayoutMod${layoutCounter++}`;
       layoutImportMap.set(layoutPath, name);
-      imports.push(`import ${name} from "${toImportPath(layoutPath)}";`);
+      imports.push(`import * as ${name} from "${toImportPath(layoutPath)}";`);
     }
     return name;
   }
@@ -77,11 +77,12 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     const componentName = `Route${i}`;
     lazyDecls.push(`const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`);
 
-    const layoutNames = route.layouts.map((lp) => getLayoutName(lp));
+    const layoutModNames = route.layouts.map((lp) => getLayoutModName(lp));
     const fields: string[] = [
       `path: "${route.path}"`,
       `component: ${componentName}`,
-      `layouts: [${layoutNames.join(", ")}]`,
+      `layouts: [${layoutModNames.map((m) => `${m}.default`).join(", ")}]`,
+      `guards: [${layoutModNames.map((m) => `${m}.guard`).join(", ")}].filter(Boolean)`,
     ];
 
     if (route.loaderPath) {

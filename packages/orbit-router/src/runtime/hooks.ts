@@ -76,7 +76,9 @@ export function useNavigation(): { state: NavigationState } {
  * @example
  * const navigate = useNavigate()
  * navigate("/users/1")
+ * navigate("/login", { replace: true })
+ * navigate(-1) // history.back() と同等
  */
-export function useNavigate(): (to: string) => void {
+export function useNavigate(): (to: string | number, options?: { replace?: boolean }) => void {
   return useRouterDispatchContext().navigate;
 }

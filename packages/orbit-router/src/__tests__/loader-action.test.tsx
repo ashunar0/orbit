@@ -82,7 +82,7 @@ const routes = [
   {
     path: "/loader",
     component: LoaderPage,
-    layouts: [RootLayout],
+    layouts: [RootLayout], guards: [],
     loader: fakeLoader,
     Loading: LoadingComp,
     ErrorBoundary: ErrorComp,
@@ -90,36 +90,36 @@ const routes = [
   {
     path: "/slow",
     component: LoaderPage,
-    layouts: [RootLayout],
+    layouts: [RootLayout], guards: [],
     loader: slowLoader,
     Loading: LoadingComp,
   },
   {
     path: "/error",
     component: LoaderPage,
-    layouts: [RootLayout],
+    layouts: [RootLayout], guards: [],
     loader: failingLoader,
     ErrorBoundary: ErrorComp,
   },
   {
     path: "/static",
     component: NoLoaderPage,
-    layouts: [RootLayout],
+    layouts: [RootLayout], guards: [],
   },
   {
     path: "/search",
     component: SearchPage,
-    layouts: [],
+    layouts: [], guards: [],
   },
   {
     path: "/search-schema",
     component: SearchSchemaPage,
-    layouts: [],
+    layouts: [], guards: [],
   },
   {
     path: "/action",
     component: ActionPage,
-    layouts: [],
+    layouts: [], guards: [],
     loader: actionPageLoader,
     action: fakeAction,
     Loading: LoadingComp,
@@ -157,7 +157,7 @@ describe("Loader", () => {
       {
         path: "/no-loading",
         component: LoaderPage,
-        layouts: [],
+        layouts: [], guards: [],
         loader: slowLoader,
       },
     ];
