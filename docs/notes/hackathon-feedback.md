@@ -331,12 +331,44 @@ Vite の module invalidation を使った hot update にできると開発体験
 
 ---
 
+## 7. action エラーの統一的なハンドリング（優先度：中 / 難易度：低）
+
+**現象:** action が throw した場合、エラーは `actionData` に入らず re-throw される。`useSubmit` では `try/catch` で対処できるが、`<Form>` ではユーザーがエラーをキャッチする手段がない。
+
+**方針（案A を採用予定）:** action のエラーも `actionData` に格納し、エラー処理を統一する。
+
+```ts
+// router.tsx の submitAction catch ブロック
+catch (err) {
+  // 現状: throw err（呼び出し側で catch が必要）
+  // 変更後: actionData にエラーを格納
+  setActionData({ error: err });
+  setNavigationState("idle");
+}
+```
+
+これにより `useSubmit` でも `<Form>` でも同じパターンでエラーを扱える：
+
+```tsx
+const actionData = useActionData();
+if (actionData?.error) {
+  return <p>エラー: {actionData.error.message}</p>;
+}
+```
+
+**注意:** 既存の `useSubmit` + `try/catch` パターンは breaking change になる。現時点では利用者が限定的なので影響は小さい。
+
+**影響範囲:** `runtime/router.tsx`（submitAction の catch ブロック）
+
+---
+
 ## 優先度マトリクス
 
 | # | 改善点 | 難易度 | インパクト | 状態 |
 |---|--------|--------|------------|------|
 | 1 | navigate に数値 + replace 対応 | 低 | 高（実際にバグ） | ✅ 実装済み |
 | 2 | guard + redirect（layout.tsx 方式） | 中 | 高（認証フロー改善） | 設計確定、未実装 |
-| 3 | action の JSON 対応 | 中 | 中（API の幅拡大） | 設計確定、未実装 |
+| 3 | action の JSON 対応 + `<Form>` | 中 | 中（API の幅拡大） | ✅ 実装済み |
 | 4 | ネスト loader データ | 高 | 中（将来の拡張性） | 未検討 |
 | 5 | HMR 改善 | 中 | 中（DX 向上） | 未検討 |
+| 7 | action エラーの統一ハンドリング | 低 | 中（`<Form>` のエラー対応） | 設計確定、未実装 |
