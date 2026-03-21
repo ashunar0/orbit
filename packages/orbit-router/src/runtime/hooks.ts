@@ -29,12 +29,14 @@ export function useActionData<T extends (...args: never[]) => Promise<unknown>>(
 
 /**
  * action を実行する関数を取得する。
+ * JSON オブジェクトまたは FormData（ファイルアップロード時）を渡せる。
  *
  * @example
  * const submit = useSubmit()
- * submit(new FormData(form))
+ * submit({ email, password })          // JSON（普段はこれ）
+ * submit(new FormData(form))           // FormData（ファイルアップロード時）
  */
-export function useSubmit(): (formData: FormData) => Promise<void> {
+export function useSubmit(): (payload: FormData | Record<string, unknown>) => Promise<void> {
   return useRouterDispatchContext().submitAction;
 }
 

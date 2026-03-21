@@ -12,7 +12,7 @@ interface Route {
   layouts: LayoutComponent[];
   guards: GuardFunction[];
   loader?: (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
-  action?: (args: { params: Record<string, string>; search: Record<string, string>; formData: FormData }) => Promise<unknown>;
+  action?: (args: { params: Record<string, string>; search: Record<string, string>; data?: unknown; formData?: FormData }) => Promise<unknown>;
   Loading?: ComponentType;
   ErrorBoundary?: ComponentType<{ error: Error }>;
 }
@@ -30,7 +30,7 @@ export interface RouterStateContextValue {
 
 export interface RouterDispatchContextValue {
   navigate: (to: string | number, options?: { replace?: boolean }) => void;
-  submitAction: (formData: FormData) => Promise<void>;
+  submitAction: (payload: FormData | Record<string, unknown>) => Promise<void>;
   prefetch: (to: string) => void;
 }
 
@@ -293,7 +293,7 @@ export function Router({ routes, NotFound }: RouterProps) {
     return () => { cancelled = true; };
   }, []);
 
-  const submitAction = useCallback(async (formData: FormData) => {
+  const submitAction = useCallback(async (payload: FormData | Record<string, unknown>) => {
     const action = committedMatched?.route.action;
     if (!action) {
       throw new Error("この route に action が定義されていません");
@@ -301,7 +301,10 @@ export function Router({ routes, NotFound }: RouterProps) {
     const urlAtSubmit = committedUrlRef.current;
     setNavigationState("submitting");
     try {
-      const result = await action({ params: committedParams, search: committedSearch, formData });
+      const actionArgs = payload instanceof FormData
+        ? { params: committedParams, search: committedSearch, formData: payload }
+        : { params: committedParams, search: committedSearch, data: payload };
+      const result = await action(actionArgs);
       if (committedUrlRef.current === urlAtSubmit) {
         setActionData(result);
         setNavigationState("idle");

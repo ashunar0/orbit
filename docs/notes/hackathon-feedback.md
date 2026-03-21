@@ -1,10 +1,10 @@
 # Hackathon フィードバック — orbit-router 実プロジェクト導入記録
 
-> 2026-03-21 — AWS ハッカソンプロジェクトで orbit-router を実際に使用した際のフィードバック
+> 2026-03-21 — AWS ハッカソンプロジェクトで Orbit Router を実際に使用した際のフィードバック
 
 ## 概要
 
-orbit-router を実際のアプリケーション（認証フロー付き CSR アプリ）に導入した結果、
+Orbit Router を実際のアプリケーション（認証フロー付き CSR アプリ）に導入した結果、
 いくつかの機能不足・改善点が見つかった。以下に優先度順で記録する。
 
 ---
@@ -198,20 +198,108 @@ guard ではその元データに直接アクセスすればよい。
 
 ## 3. action が FormData 専用（優先度：中 / 難易度：中）
 
-**現象:** 認証フォーム（login, register, confirm）が orbit-router の action を使えていない。Cognito は JSON ベースの API なので FormData に合わない。
+### 問題
 
-**提案:** `useSubmit` に JSON モードを追加。
+認証フォーム（login, register, confirm）が orbit-router の action を使えていない。Cognito は JSON ベースの API なので FormData に合わない。
 
-```ts
-submit({ email, password }, { encType: "application/json" });
+現状の `useSubmit` は `FormData` のみ受け付けるため、JSON → FormData → JSON という無駄な変換が発生する。
 
-// action 側
-export async function action({ json }) { ... }
+```tsx
+// 現状: react-hook-form から JSON が来るのに FormData に詰め替えが必要
+const onSubmit = (data) => {
+  const fd = new FormData();
+  fd.set("email", data.email);      // JSON → FormData（無駄）
+  fd.set("password", data.password);
+  submit(fd);
+};
+
+// action 側でもまた取り出す
+export const action = async ({ formData }) => {
+  const email = formData.get("email") as string;  // FormData → string（無駄）
+  await signIn(email, password);                   // API は JSON を期待
+};
 ```
 
-**影響範囲:** `runtime/router.tsx`（action 実行部分）、`useSubmit` hook
+### 検討プロセス
 
-**未検討:** orbit-router 独自の設計として JSON をデフォルトにする案もある（Remix 互換 vs orbit-router らしさの判断が必要）。
+#### なぜ FormData がデフォルトだったか
+
+Remix / React Router v7 が FormData をデフォルトにしている影響。Remix の設計思想は「Web 標準に忠実」で、`<form>` は JavaScript なしでも FormData として送信できる（progressive enhancement）。
+
+#### CSR では FormData のメリットが薄い
+
+orbit-router は CSR 専用（JavaScript 前提）のため、progressive enhancement のメリットがない：
+
+| | SSR（Remix 等） | CSR（orbit-router） |
+|---|---|---|
+| JS なしで動く？ | `<form>` が FormData で送信 → 動く | アプリ自体が動かない |
+| FormData の価値 | Web 標準としての強さ | ファイルアップロード時のみ |
+
+#### 他フレームワークの比較
+
+| フレームワーク | デフォルト | 理由 |
+|---|---|---|
+| Remix / RR v7 | FormData（JSON はオプション） | Web 標準 + progressive enhancement |
+| Next.js | JSON（Server Actions は関数呼び出し） | SSR 前提、FormData の概念が出ない |
+| TanStack Router | action の仕組みなし（自前 fetch） | 実質 JSON（TanStack Query と併用） |
+
+CSR 専用のフレームワークは JSON 寄りの選択をしている。
+
+#### JSON デフォルトの判断理由
+
+- 現代の SPA は API 通信がほぼ全て JSON
+- react-hook-form 等のライブラリは JSON オブジェクトを返す
+- TypeScript との相性が良い（ネスト・型推論）
+- FormData が必要なのはファイルアップロード時のみ
+- `instanceof FormData` で自動判定できるため、API は複雑にならない
+
+### 決定した設計
+
+#### JSON をデフォルト、FormData はファイルアップロード時のみ
+
+```ts
+// 送り側（useSubmit）
+const submit = useSubmit();
+
+// 普段は JSON（ほとんどのケース）
+submit({ email, password });
+
+// ファイルアップロード時だけ FormData
+const fd = new FormData();
+fd.set("title", "交通費");
+fd.set("receipt", receiptFile);
+submit(fd);
+```
+
+#### action 側の引数
+
+```ts
+// JSON で送信された場合 → data に入る（formData は undefined）
+export const action = async ({ data, params, search }) => {
+  const { email, password } = data;
+  await signIn(email, password);
+};
+
+// FormData で送信された場合 → formData に入る（data は undefined）
+export const action = async ({ formData, params, search }) => {
+  const file = formData.get("receipt");
+};
+```
+
+- `data` と `formData` は排他的（同時に値が入ることはない）
+- 判定は `submit()` に渡された値が `instanceof FormData` かどうかで自動分岐
+
+#### Breaking change
+
+なし。既存の `submit(formData)` はそのまま動く。
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|---|---|
+| `runtime/router.tsx` | `submitAction` の引数を `FormData \| object` に拡張。action 呼び出し時に `data` / `formData` を振り分け |
+| `runtime/hooks.ts` | `useSubmit` の返り値の型を更新 |
+| `client.d.ts` | action の引数型に `data` を追加 |
 
 ---
 
@@ -249,6 +337,6 @@ Vite の module invalidation を使った hot update にできると開発体験
 |---|--------|--------|------------|------|
 | 1 | navigate に数値 + replace 対応 | 低 | 高（実際にバグ） | ✅ 実装済み |
 | 2 | guard + redirect（layout.tsx 方式） | 中 | 高（認証フロー改善） | 設計確定、未実装 |
-| 3 | action の JSON 対応 | 中 | 中（API の幅拡大） | 未検討 |
+| 3 | action の JSON 対応 | 中 | 中（API の幅拡大） | 設計確定、未実装 |
 | 4 | ネスト loader データ | 高 | 中（将来の拡張性） | 未検討 |
 | 5 | HMR 改善 | 中 | 中（DX 向上） | 未検討 |

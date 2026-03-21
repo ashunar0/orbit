@@ -114,7 +114,22 @@ routes/users/[id]/page.tsx   → /users/:id
 - `@vitejs/plugin-react` の deprecation 警告 → `@vitejs/plugin-react-oxc` に置換すれば解消
 - Node.js 22+ 推奨だが、現環境は v20（動作はする）
 
+## npm publish 手順
+
+```bash
+cd packages/orbit-router && pnpm publish --no-git-checks
+```
+
+- **必ず `pnpm publish` を使う**（`npm publish` は不可）
+  - pnpm が `catalog:` プロトコルを実バージョンに解決してから tarball を作る
+  - `npm publish` だと `"zod": "catalog:"` がそのまま publish されて壊れる
+- `tsdown.config.ts` の `exports: false` を維持すること
+  - `true` にすると `vp pack` が `package.json` の `exports` を上書きし、手動設定した `types` 条件や `./client` エントリが消える
+- アプリ側で `virtual:orbit-router/routes` の型を使うには、tsconfig.json か エントリファイルに以下を追加：
+  ```ts
+  /// <reference types="orbit-router/client" />
+  ```
+
 ## 注意事項
 
 - `packages/orbit-router` を変更したら `pnpm run build` してから playground を試す
-- `vp pack` 実行時に `package.json` の `exports` が自動更新される（tsdown の `exports: true` による）

@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { cleanup, render, screen, waitFor, act } from "@testing-library/react";
 import { Router } from "../runtime/router";
 import { useLoaderData, useActionData, useSubmit, useSearchParams } from "../runtime/hooks";
+import { Form } from "../runtime/form";
 import { z } from "zod";
 
 function LoaderPage() {
@@ -50,6 +51,44 @@ function ActionPage() {
   );
 }
 
+function JsonActionPage() {
+  const actionResult = useActionData<typeof jsonAction>();
+  const submit = useSubmit();
+
+  return (
+    <div>
+      {actionResult && <div>Received: {JSON.stringify(actionResult.received)}</div>}
+      <button onClick={() => submit({ email: "test@example.com", password: "secret" })}>Submit JSON</button>
+    </div>
+  );
+}
+
+function FormActionPage() {
+  const actionResult = useActionData<typeof fakeAction>();
+  return (
+    <div>
+      {actionResult && <div>Form result: {String(actionResult.ok)}</div>}
+      <Form>
+        <input name="name" defaultValue="test" />
+        <button type="submit">Submit Form</button>
+      </Form>
+    </div>
+  );
+}
+
+function JsonFormActionPage() {
+  const actionResult = useActionData<typeof jsonAction>();
+  return (
+    <div>
+      {actionResult && <div>JSON Form: {JSON.stringify(actionResult.received)}</div>}
+      <Form json>
+        <input name="email" defaultValue="form@example.com" />
+        <button type="submit">Submit JSON Form</button>
+      </Form>
+    </div>
+  );
+}
+
 function RootLayout({ children }: { children: React.ReactNode }) {
   return <div data-testid="layout">{children}</div>;
 }
@@ -60,9 +99,14 @@ const actionPageLoader = async () => {
   return { count: actionCallCount };
 };
 
-const fakeAction = async ({ formData }: { params: Record<string, string>; search: Record<string, string>; formData: FormData }) => {
+const fakeAction = async ({ formData }: { params: Record<string, string>; search: Record<string, string>; formData?: FormData }) => {
   actionCallCount++;
   return { ok: true };
+};
+
+const jsonAction = async ({ data }: { params: Record<string, string>; search: Record<string, string>; data?: unknown }) => {
+  actionCallCount++;
+  return { received: data };
 };
 
 const fakeLoader = async () => {
@@ -123,6 +167,24 @@ const routes = [
     loader: actionPageLoader,
     action: fakeAction,
     Loading: LoadingComp,
+  },
+  {
+    path: "/json-action",
+    component: JsonActionPage,
+    layouts: [], guards: [],
+    action: jsonAction,
+  },
+  {
+    path: "/form-action",
+    component: FormActionPage,
+    layouts: [], guards: [],
+    action: fakeAction,
+  },
+  {
+    path: "/json-form-action",
+    component: JsonFormActionPage,
+    layouts: [], guards: [],
+    action: jsonAction,
   },
 ];
 
@@ -256,6 +318,45 @@ describe("Action", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Count: 1")).toBeDefined();
+    });
+  });
+
+  it("submits JSON object and receives it via data arg", async () => {
+    window.history.pushState(null, "", "/json-action");
+    render(<Router routes={routes} />);
+
+    await act(async () => {
+      screen.getByText("Submit JSON").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Received: {"email":"test@example.com","password":"secret"}')).toBeDefined();
+    });
+  });
+
+  it("<Form> submits FormData to action", async () => {
+    window.history.pushState(null, "", "/form-action");
+    render(<Router routes={routes} />);
+
+    await act(async () => {
+      screen.getByText("Submit Form").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Form result: true")).toBeDefined();
+    });
+  });
+
+  it("<Form json> submits JSON object to action", async () => {
+    window.history.pushState(null, "", "/json-form-action");
+    render(<Router routes={routes} />);
+
+    await act(async () => {
+      screen.getByText("Submit JSON Form").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('JSON Form: {"email":"form@example.com"}')).toBeDefined();
     });
   });
 
