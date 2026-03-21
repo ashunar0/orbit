@@ -45,6 +45,11 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
   ];
 }
 
+/** Windows のバックスラッシュを import パス用にスラッシュへ変換 */
+function toImportPath(p: string): string {
+  return p.split(path.sep).join("/");
+}
+
 function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof scanRoutes>>): string {
   const imports: string[] = [];
   const lazyDecls: string[] = [];
@@ -58,7 +63,7 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     if (!name) {
       name = `Layout${layoutCounter++}`;
       layoutImportMap.set(layoutPath, name);
-      imports.push(`import ${name} from "${layoutPath}";`);
+      imports.push(`import ${name} from "${toImportPath(layoutPath)}";`);
     }
     return name;
   }
@@ -70,7 +75,7 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
 
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
-    lazyDecls.push(`const ${componentName} = lazy(() => import("${route.filePath}"));`);
+    lazyDecls.push(`const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`);
 
     const layoutNames = route.layouts.map((lp) => getLayoutName(lp));
     const fields: string[] = [
@@ -81,32 +86,32 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
 
     if (route.loaderPath) {
       const name = `loader${loaderCounter++}`;
-      imports.push(`import { loader as ${name} } from "${route.loaderPath}";`);
+      imports.push(`import { loader as ${name} } from "${toImportPath(route.loaderPath)}";`);
       fields.push(`loader: ${name}`);
     }
 
     if (route.actionPath) {
       const name = `action${actionCounter++}`;
-      imports.push(`import { action as ${name} } from "${route.actionPath}";`);
+      imports.push(`import { action as ${name} } from "${toImportPath(route.actionPath)}";`);
       fields.push(`action: ${name}`);
     }
 
     if (route.loadingPath) {
       const name = `Loading${loadingCounter++}`;
-      imports.push(`import ${name} from "${route.loadingPath}";`);
+      imports.push(`import ${name} from "${toImportPath(route.loadingPath)}";`);
       fields.push(`Loading: ${name}`);
     }
 
     if (route.errorPath) {
       const name = `ErrorBoundary${errorCounter++}`;
-      imports.push(`import ${name} from "${route.errorPath}";`);
+      imports.push(`import ${name} from "${toImportPath(route.errorPath)}";`);
       fields.push(`ErrorBoundary: ${name}`);
     }
 
     routeDefs.push(`  { ${fields.join(", ")} }`);
   }
 
-  const notFoundImport = notFoundPath ? `import NotFound from "${notFoundPath}";` : "";
+  const notFoundImport = notFoundPath ? `import NotFound from "${toImportPath(notFoundPath)}";` : "";
   const notFoundExport = notFoundPath ? "export { NotFound };" : "export const NotFound = undefined;";
 
   return `import { lazy } from "react";
