@@ -4,7 +4,6 @@ import { cleanup, render, screen, waitFor, act } from "@testing-library/react";
 import { Router } from "../runtime/router";
 import { useLoaderData, useActionData, useSubmit, useSearchParams } from "../runtime/hooks";
 import { Form } from "../runtime/form";
-import { z } from "zod";
 
 function LoaderPage() {
   const data = useLoaderData<typeof fakeLoader>() as { message: string };
@@ -28,12 +27,10 @@ function SearchPage() {
   return <div>Query: {raw.q ?? "none"}</div>;
 }
 
-const searchSchema = z.object({
-  page: z.coerce.number().default(1),
-});
-
 function SearchSchemaPage() {
-  const { page } = useSearchParams(searchSchema);
+  const { page } = useSearchParams((raw) => ({
+    page: Number(raw.page ?? 1),
+  }));
   return <div>Page: {page}</div>;
 }
 

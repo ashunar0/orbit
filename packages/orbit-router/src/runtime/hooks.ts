@@ -1,4 +1,3 @@
-import type { ZodType } from "zod";
 import { useRouterStateContext, useRouterDispatchContext, type NavigationState } from "./router";
 
 export function useParams(): Record<string, string> {
@@ -42,22 +41,26 @@ export function useSubmit(): (payload: FormData | Record<string, unknown>) => Pr
 
 /**
  * URL の search params を取得する。
- * Zod スキーマを渡すとバリデーション + 型推論が効く。
+ * パース関数を渡すとバリデーション + 型変換ができる。
  *
  * @example
- * // スキーマなし — 生の文字列
+ * // パース関数なし — 生の文字列
  * const search = useSearchParams()  // Record<string, string>
  *
- * // スキーマあり — 型付き
- * import { searchSchema } from './loader'
- * const { page, sort } = useSearchParams(searchSchema)  // { page: number, sort: string }
+ * // パース関数あり — 型付き（Zod, Valibot, 自前関数など何でも可）
+ * const { page } = useSearchParams((raw) => ({
+ *   page: Number(raw.page ?? 1),
+ * }))
+ *
+ * // Zod を使う場合
+ * const { page } = useSearchParams((raw) => searchSchema.parse(raw))
  */
 export function useSearchParams(): Record<string, string>;
-export function useSearchParams<T extends ZodType>(schema: T): T["_output"];
-export function useSearchParams(schema?: ZodType): unknown {
+export function useSearchParams<T>(parse: (raw: Record<string, string>) => T): T;
+export function useSearchParams<T>(parse?: (raw: Record<string, string>) => T): Record<string, string> | T {
   const raw = useRouterStateContext().search;
-  if (!schema) return raw;
-  return schema.parse(raw);
+  if (!parse) return raw;
+  return parse(raw);
 }
 
 /**
