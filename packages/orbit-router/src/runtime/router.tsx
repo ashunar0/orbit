@@ -259,6 +259,7 @@ export function Router({ routes, NotFound }: RouterProps) {
       committedLayoutsRef.current = newLayouts;
       layoutLoaderDatasRef.current = layoutDatas;
       setLoaderError(null);
+      setActionData(undefined);
       setNavigationState("idle");
     })().catch((err) => {
       if (cancelled) return;
@@ -282,24 +283,37 @@ export function Router({ routes, NotFound }: RouterProps) {
     return () => { cancelled = true; };
   }, [pendingUrl]);
 
-  // action 後の loader 再実行（loaderKey でトリガー）
+  // action 後の loader 再実行（loaderKey でトリガー）— layout loader も含む
   useEffect(() => {
     if (loaderKey === 0) return; // 初回は実行しない
-    if (!committedMatched?.route.loader) return;
+    if (!committedMatched || !routeHasLoader(committedMatched.route)) return;
 
     let cancelled = false;
-    committedMatched.route.loader({ params: committedParams, search: committedSearch }).then(
-      (data) => {
-        if (!cancelled) {
-          setPageLoaderData(data);
-        }
-      },
-      (err) => {
-        if (!cancelled) {
-          setLoaderError(err instanceof Error ? err : new Error(String(err)));
-        }
-      },
-    );
+    const args = { params: committedParams, search: committedSearch };
+
+    (async () => {
+      // layout loader を再実行
+      const layoutDatas: unknown[] = [];
+      for (const layout of committedMatched.route.layouts) {
+        if (cancelled) return;
+        layoutDatas.push(layout.loader ? await layout.loader(args) : undefined);
+      }
+
+      // page loader を再実行
+      const pageData = committedMatched.route.loader
+        ? await committedMatched.route.loader(args)
+        : undefined;
+
+      if (!cancelled) {
+        setPageLoaderData(pageData);
+        setLayoutLoaderDatas(layoutDatas);
+        layoutLoaderDatasRef.current = layoutDatas;
+      }
+    })().catch((err) => {
+      if (!cancelled) {
+        setLoaderError(err instanceof Error ? err : new Error(String(err)));
+      }
+    });
 
     return () => { cancelled = true; };
   }, [loaderKey]);

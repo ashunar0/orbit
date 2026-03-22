@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { cleanup, render, screen, waitFor, act } from "@testing-library/react";
 import { Router } from "../runtime/router";
-import { useLoaderData, useActionData, useSubmit, useSearchParams } from "../runtime/hooks";
+import { useLoaderData, useActionData, useSubmit, useSearchParams, useNavigate } from "../runtime/hooks";
 import { Form } from "../runtime/form";
 
 function LoaderPage() {
@@ -437,5 +437,125 @@ describe("Layout Loader", () => {
     render(<Router routes={layoutLoaderRoutes} />);
     expect(screen.getByTestId("layout-data").textContent).toBe("Layout: no data");
     expect(screen.getByText("Static in layout")).toBeDefined();
+  });
+});
+
+// --- Layout Loader Skip テスト ---
+
+function SharedLayout({ children }: { children: React.ReactNode }) {
+  const data = useLoaderData() as { count: number } | undefined;
+  return (
+    <div>
+      <div data-testid="shared-layout">SharedLayout: {data?.count ?? "none"}</div>
+      {children}
+    </div>
+  );
+}
+
+function DifferentLayout({ children }: { children: React.ReactNode }) {
+  const data = useLoaderData() as { label: string } | undefined;
+  return (
+    <div>
+      <div data-testid="different-layout">DifferentLayout: {data?.label ?? "none"}</div>
+      {children}
+    </div>
+  );
+}
+
+function PageA() {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate("/skip-b")}>Go B</button>;
+}
+
+function PageB() {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate("/skip-a")}>Go A</button>;
+}
+
+function PageC() {
+  return <div>Page C</div>;
+}
+
+let sharedLoaderCallCount = 0;
+const sharedLoaderSpy = async () => {
+  sharedLoaderCallCount++;
+  return { count: sharedLoaderCallCount };
+};
+
+const differentLoaderSpy = vi.fn(async () => ({ label: "different" }));
+
+const skipTestRoutes = [
+  {
+    path: "/skip-a",
+    component: PageA,
+    layouts: [{ component: SharedLayout, loader: sharedLoaderSpy }],
+    guards: [],
+    Loading: LoadingComp,
+  },
+  {
+    path: "/skip-b",
+    component: PageB,
+    layouts: [{ component: SharedLayout, loader: sharedLoaderSpy }],
+    guards: [],
+    Loading: LoadingComp,
+  },
+  {
+    path: "/skip-c",
+    component: PageC,
+    layouts: [{ component: DifferentLayout, loader: differentLoaderSpy }],
+    guards: [],
+    Loading: LoadingComp,
+  },
+];
+
+describe("Layout Loader Skip", () => {
+  beforeEach(() => {
+    sharedLoaderCallCount = 0;
+    differentLoaderSpy.mockClear();
+    window.history.pushState(null, "", "/");
+  });
+
+  afterEach(cleanup);
+
+  it("同じ layout 内の遷移で layout loader がスキップされデータが保持される", async () => {
+    window.history.pushState(null, "", "/skip-a");
+    render(<Router routes={skipTestRoutes} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("shared-layout").textContent).toBe("SharedLayout: 1");
+    });
+    expect(sharedLoaderCallCount).toBe(1);
+
+    // /skip-b に遷移（同じ SharedLayout）
+    await act(async () => {
+      screen.getByText("Go B").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Go A")).toBeDefined();
+    });
+
+    // layout loader はスキップされ、カウントが増えない
+    expect(sharedLoaderCallCount).toBe(1);
+    // layout のデータは保持される
+    expect(screen.getByTestId("shared-layout").textContent).toBe("SharedLayout: 1");
+  });
+
+  it("layout が変わる遷移で新しい layout loader が実行される", async () => {
+    window.history.pushState(null, "", "/skip-a");
+    render(<Router routes={skipTestRoutes} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("shared-layout").textContent).toBe("SharedLayout: 1");
+    });
+
+    // /skip-c に遷移（DifferentLayout に変わる）
+    await act(async () => {
+      window.history.pushState(null, "", "/skip-c");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("different-layout").textContent).toBe("DifferentLayout: different");
+    });
+    expect(differentLoaderSpy).toHaveBeenCalledTimes(1);
   });
 });
