@@ -315,7 +315,7 @@ export const action = async ({ formData, params, search }) => {
 
 ---
 
-## 5. HMR が full-reload になっている（優先度：低〜中 / 難易度：中）
+## 5. HMR が full-reload になっている（優先度：低〜中 / 難易度：中）✅ 実装済み
 
 **現象:** ルートファイルを変更すると React の state が全リセットされる。
 
@@ -369,6 +369,6 @@ if (actionData?.error) {
 | 1 | navigate に数値 + replace 対応 | 低 | 高（実際にバグ） | ✅ 実装済み |
 | 2 | guard + redirect（layout.tsx 方式） | 中 | 高（認証フロー改善） | ✅ 実装済み |
 | 3 | action の JSON 対応 + `<Form>` | 中 | 中（API の幅拡大） | ✅ 実装済み |
-| 4 | ネスト loader データ | 高 | 中（将来の拡張性） | 未検討 |
-| 5 | HMR 改善 | 中 | 中（DX 向上） | 未検討 |
+| 4 | ネスト loader データ | 高 | 中（将来の拡張性） | ✅ 実装済み |
+| 5 | HMR 改善 | 中 | 中（DX 向上） | ✅ 実装済み |
 | 7 | action エラーの統一ハンドリング | 低 | 中（`<Form>` のエラー対応） | ✅ 実装済み |

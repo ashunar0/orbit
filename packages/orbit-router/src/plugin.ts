@@ -31,16 +31,21 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
           return generateRouteModule(result);
         }
       },
-      handleHotUpdate({ file, server }) {
-        const routesPath = path.resolve(root, routesDir);
-        if (file.startsWith(routesPath)) {
+      configureServer(server) {
+        // ファイル追加・削除 → ルート構造が変わるので仮想モジュール再生成 + full-reload
+        const onStructureChange = (file: string) => {
+          const routesPath = path.resolve(root, routesDir);
+          if (!file.startsWith(routesPath)) return;
           const mod = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
           if (mod) {
             server.moduleGraph.invalidateModule(mod);
             server.ws.send({ type: "full-reload" });
           }
-        }
+        };
+        server.watcher.on("add", onStructureChange);
+        server.watcher.on("unlink", onStructureChange);
       },
+      // ファイル編集は handleHotUpdate を定義しない → Vite の Fast Refresh に任せて state を保持
     },
   ];
 }
