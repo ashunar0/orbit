@@ -33,8 +33,10 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
       },
       configureServer(server) {
         // ファイル追加・削除 → ルート構造が変わるので仮想モジュール再生成 + full-reload
+        // NOTE: layout.tsx の export 追加・削除（loader/guard）は import * as のライブバインディングで
+        //       Fast Refresh 経由で反映されるため、virtual module の再生成は不要
+        const routesPath = path.resolve(root, routesDir);
         const onStructureChange = (file: string) => {
-          const routesPath = path.resolve(root, routesDir);
           if (!file.startsWith(routesPath)) return;
           const mod = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
           if (mod) {
@@ -44,6 +46,10 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
         };
         server.watcher.on("add", onStructureChange);
         server.watcher.on("unlink", onStructureChange);
+        server.httpServer?.once("close", () => {
+          server.watcher.off("add", onStructureChange);
+          server.watcher.off("unlink", onStructureChange);
+        });
       },
       // ファイル編集は handleHotUpdate を定義しない → Vite の Fast Refresh に任せて state を保持
     },
