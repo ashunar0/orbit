@@ -1,4 +1,4 @@
-import { useRouterStateContext, useRouterDispatchContext, type NavigationState } from "./router";
+import { useRouterStateContext, useRouterDispatchContext, useLoaderDataContext, type NavigationState } from "./router";
 
 export function useParams(): Record<string, string> {
   return useRouterStateContext().params;
@@ -6,13 +6,14 @@ export function useParams(): Record<string, string> {
 
 /**
  * loader の戻り値を型付きで取得する。
+ * layout / page それぞれ自分のセグメントの loader データを返す。
  *
  * @example
  * import type { loader } from './loader'
  * const data = useLoaderData<typeof loader>()
  */
 export function useLoaderData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> {
-  return useRouterStateContext().loaderData as Awaited<ReturnType<T>>;
+  return useLoaderDataContext() as Awaited<ReturnType<T>>;
 }
 
 /**

@@ -81,7 +81,7 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     const fields: string[] = [
       `path: "${route.path}"`,
       `component: ${componentName}`,
-      `layouts: [${layoutModNames.map((m) => `${m}.default`).join(", ")}]`,
+      `layouts: [${layoutModNames.map((m) => `{ component: ${m}.default, loader: ${m}.loader }`).join(", ")}]`,
       `guards: [${layoutModNames.map((m) => `${m}.guard`).join(", ")}].filter(Boolean)`,
     ];
 

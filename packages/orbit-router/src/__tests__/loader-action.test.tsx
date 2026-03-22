@@ -123,7 +123,7 @@ const routes = [
   {
     path: "/loader",
     component: LoaderPage,
-    layouts: [RootLayout], guards: [],
+    layouts: [{ component: RootLayout }], guards: [],
     loader: fakeLoader,
     Loading: LoadingComp,
     ErrorBoundary: ErrorComp,
@@ -131,21 +131,21 @@ const routes = [
   {
     path: "/slow",
     component: LoaderPage,
-    layouts: [RootLayout], guards: [],
+    layouts: [{ component: RootLayout }], guards: [],
     loader: slowLoader,
     Loading: LoadingComp,
   },
   {
     path: "/error",
     component: LoaderPage,
-    layouts: [RootLayout], guards: [],
+    layouts: [{ component: RootLayout }], guards: [],
     loader: failingLoader,
     ErrorBoundary: ErrorComp,
   },
   {
     path: "/static",
     component: NoLoaderPage,
-    layouts: [RootLayout], guards: [],
+    layouts: [{ component: RootLayout }], guards: [],
   },
   {
     path: "/search",
@@ -357,4 +357,85 @@ describe("Action", () => {
     });
   });
 
+});
+
+// --- Layout Loader テスト ---
+
+function LayoutWithLoader({ children }: { children: React.ReactNode }) {
+  const data = useLoaderData() as { user: string } | undefined;
+  return (
+    <div>
+      <div data-testid="layout-data">Layout: {data?.user ?? "no data"}</div>
+      {children}
+    </div>
+  );
+}
+
+function PageWithLoader() {
+  const data = useLoaderData() as { items: string[] };
+  return <div>Items: {data.items.join(", ")}</div>;
+}
+
+function StaticPageInLayout() {
+  return <div>Static in layout</div>;
+}
+
+const layoutLoader = async () => ({ user: "あさひ" });
+const pageInLayoutLoader = async () => ({ items: ["a", "b", "c"] });
+
+const layoutLoaderRoutes = [
+  {
+    path: "/with-layout-loader",
+    component: PageWithLoader,
+    layouts: [{ component: LayoutWithLoader, loader: layoutLoader }],
+    guards: [],
+    loader: pageInLayoutLoader,
+    Loading: LoadingComp,
+  },
+  {
+    path: "/with-layout-loader-no-page-loader",
+    component: StaticPageInLayout,
+    layouts: [{ component: LayoutWithLoader, loader: layoutLoader }],
+    guards: [],
+    Loading: LoadingComp,
+  },
+  {
+    path: "/no-layout-loader",
+    component: StaticPageInLayout,
+    layouts: [{ component: LayoutWithLoader }],
+    guards: [],
+  },
+];
+
+describe("Layout Loader", () => {
+  beforeEach(() => {
+    window.history.pushState(null, "", "/");
+  });
+
+  afterEach(cleanup);
+
+  it("layout と page の loader データが隔離される", async () => {
+    window.history.pushState(null, "", "/with-layout-loader");
+    render(<Router routes={layoutLoaderRoutes} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("layout-data").textContent).toBe("Layout: あさひ");
+      expect(screen.getByText("Items: a, b, c")).toBeDefined();
+    });
+  });
+
+  it("layout に loader があり page に loader がない場合も動作する", async () => {
+    window.history.pushState(null, "", "/with-layout-loader-no-page-loader");
+    render(<Router routes={layoutLoaderRoutes} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("layout-data").textContent).toBe("Layout: あさひ");
+      expect(screen.getByText("Static in layout")).toBeDefined();
+    });
+  });
+
+  it("layout に loader がない場合は undefined", () => {
+    window.history.pushState(null, "", "/no-layout-loader");
+    render(<Router routes={layoutLoaderRoutes} />);
+    expect(screen.getByTestId("layout-data").textContent).toBe("Layout: no data");
+    expect(screen.getByText("Static in layout")).toBeDefined();
+  });
 });

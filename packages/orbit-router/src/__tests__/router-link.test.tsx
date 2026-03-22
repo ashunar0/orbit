@@ -35,9 +35,9 @@ function UsersLayout({ children }: { children: React.ReactNode }) {
 }
 
 const routes = [
-  { path: "/", component: HomePage, layouts: [RootLayout], guards: [] },
-  { path: "/about", component: AboutPage, layouts: [RootLayout], guards: [] },
-  { path: "/users/:id", component: UserPage, layouts: [RootLayout, UsersLayout], guards: [] },
+  { path: "/", component: HomePage, layouts: [{ component: RootLayout }], guards: [] },
+  { path: "/about", component: AboutPage, layouts: [{ component: RootLayout }], guards: [] },
+  { path: "/users/:id", component: UserPage, layouts: [{ component: RootLayout }, { component: UsersLayout }], guards: [] },
 ];
 
 describe("Router", () => {

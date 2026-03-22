@@ -4,14 +4,21 @@ import { isRedirectError } from "./redirect";
 
 type LayoutComponent = ComponentType<{ children: ReactNode }>;
 
+type LoaderFunction = (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
+
 type GuardFunction = (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<void>;
+
+interface LayoutEntry {
+  component: LayoutComponent;
+  loader?: LoaderFunction;
+}
 
 interface Route {
   path: string;
   component: ComponentType | LazyExoticComponent<ComponentType>;
-  layouts: LayoutComponent[];
+  layouts: LayoutEntry[];
   guards: GuardFunction[];
-  loader?: (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
+  loader?: LoaderFunction;
   action?: (args: { params: Record<string, string>; search: Record<string, string>; data?: unknown; formData?: FormData }) => Promise<unknown>;
   Loading?: ComponentType;
   ErrorBoundary?: ComponentType<{ error: Error }>;
@@ -23,7 +30,6 @@ export interface RouterStateContextValue {
   currentPath: string;
   params: Record<string, string>;
   search: Record<string, string>;
-  loaderData: unknown;
   actionData: unknown;
   navigationState: NavigationState;
 }
@@ -36,6 +42,11 @@ export interface RouterDispatchContextValue {
 
 const RouterStateContext = createContext<RouterStateContextValue | null>(null);
 const RouterDispatchContext = createContext<RouterDispatchContextValue | null>(null);
+const LoaderDataContext = createContext<unknown>(undefined);
+
+export function useLoaderDataContext(): unknown {
+  return useContext(LoaderDataContext);
+}
 
 export function useRouterStateContext(): RouterStateContextValue {
   const ctx = useContext(RouterStateContext);
@@ -63,11 +74,16 @@ export function Router({ routes, NotFound }: RouterProps) {
   const [committedUrl, setCommittedUrl] = useState(() => window.location.pathname + window.location.search);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const pendingUrlRef = useRef<string | null>(null);
-  const [loaderData, setLoaderData] = useState<unknown>(undefined);
+  const [pageLoaderData, setPageLoaderData] = useState<unknown>(undefined);
+  const [layoutLoaderDatas, setLayoutLoaderDatas] = useState<unknown[]>([]);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [actionData, setActionData] = useState<unknown>(undefined);
   const [loaderError, setLoaderError] = useState<Error | null>(null);
   const [navigationState, setNavigationState] = useState<NavigationState>("idle");
   const [loaderKey, setLoaderKey] = useState(0);
+  // 前回コミットした layout を追跡（skip 判定用）
+  const committedLayoutsRef = useRef<LayoutEntry[]>([]);
+  const layoutLoaderDatasRef = useRef<unknown[]>([]);
   const PREFETCH_TTL = 30_000; // 30秒
   const prefetchCache = useRef(new Map<string, { data: unknown; cachedAt: number }>());
   const prefetchInFlight = useRef(new Set<string>());
@@ -80,27 +96,52 @@ export function Router({ routes, NotFound }: RouterProps) {
   const committedParams = useMemo(() => committedMatched?.params ?? {}, [committedMatched]);
   const committedSearch = useMemo(() => parseSearchParams(committedUrl), [committedUrl]);
 
+  // --- ヘルパー関数 ---
+
+  const commitRoute = (url: string, pageLd: unknown, layoutLds: unknown[], layouts: LayoutEntry[]) => {
+    setPendingUrl(null);
+    pendingUrlRef.current = null;
+    setCommittedUrl(url);
+    setPageLoaderData(pageLd);
+    setLayoutLoaderDatas(layoutLds);
+    committedLayoutsRef.current = layouts;
+    layoutLoaderDatasRef.current = layoutLds;
+    setLoaderError(null);
+    setActionData(undefined);
+    setNavigationState("idle");
+  };
+
+  const carryOverLayoutDatas = (newLayouts: LayoutEntry[], sharedCount: number): unknown[] => {
+    const result: unknown[] = [];
+    for (let i = 0; i < newLayouts.length; i++) {
+      result.push(i < sharedCount ? layoutLoaderDatasRef.current[i] : undefined);
+    }
+    return result;
+  };
+
   // ナビゲーション開始: キャッシュヒット → 即コミット、guard/loader あり → pending、なし → 即コミット
   const startNavigation = useCallback((to: string) => {
     const toPath = to.split("?")[0];
     const toMatched = findMatchedRoute(routes, toPath);
     const hasGuards = toMatched && toMatched.route.guards.length > 0;
-    const hasLoader = toMatched?.route.loader;
+    const hasAnyLoader = toMatched && routeHasLoader(toMatched.route);
 
-    if (hasLoader || hasGuards) {
-      // prefetch キャッシュを確認（TTL 内のみ有効、guard なしの場合のみ）
-      if (!hasGuards) {
+    if (hasAnyLoader || hasGuards) {
+      // prefetch キャッシュを確認（TTL 内のみ有効、guard なし＋layout 変更なしの場合のみ）
+      if (!hasGuards && toMatched) {
         const entry = prefetchCache.current.get(to);
         if (entry && Date.now() - entry.cachedAt < PREFETCH_TTL) {
-          prefetchCache.current.delete(to);
-          setPendingUrl(null);
-          pendingUrlRef.current = null;
-          setCommittedUrl(to);
-          setLoaderData(entry.data);
-          setLoaderError(null);
-          setActionData(undefined);
-          setNavigationState("idle");
-          return;
+          const newLayouts = toMatched.route.layouts;
+          const sharedCount = getSharedLayoutCount(committedLayoutsRef.current, newLayouts);
+          const hasNewLayoutLoaders = newLayouts.slice(sharedCount).some((l) => l.loader);
+
+          if (!hasNewLayoutLoaders) {
+            // layout loader は全てスキップ可 + page data はキャッシュ済み → 即コミット
+            prefetchCache.current.delete(to);
+            const newLayoutDatas = carryOverLayoutDatas(newLayouts, sharedCount);
+            commitRoute(to, entry.data, newLayoutDatas, newLayouts);
+            return;
+          }
         }
         prefetchCache.current.delete(to); // TTL 切れのエントリを削除
       }
@@ -110,13 +151,10 @@ export function Router({ routes, NotFound }: RouterProps) {
       setNavigationState("loading");
     } else {
       // guard も loader もなし → 即コミット
-      setPendingUrl(null);
-      pendingUrlRef.current = null;
-      setCommittedUrl(to);
-      setLoaderData(undefined);
-      setLoaderError(null);
-      setActionData(undefined);
-      setNavigationState("idle");
+      const newLayouts = toMatched?.route.layouts ?? [];
+      const sharedCount = getSharedLayoutCount(committedLayoutsRef.current, newLayouts);
+      const newLayoutDatas = carryOverLayoutDatas(newLayouts, sharedCount);
+      commitRoute(to, undefined, newLayoutDatas, newLayouts);
     }
   }, [routes]);
 
@@ -164,7 +202,7 @@ export function Router({ routes, NotFound }: RouterProps) {
     );
   }, [routes]);
 
-  // pending ルートの guard → loader 実行
+  // pending ルートの guard → layout loader → page loader 実行
   useEffect(() => {
     if (!pendingUrl) return;
 
@@ -172,12 +210,7 @@ export function Router({ routes, NotFound }: RouterProps) {
     const pendingMatched = findMatchedRoute(routes, pendingPath);
 
     if (!pendingMatched) {
-      setCommittedUrl(pendingUrl);
-      setPendingUrl(null);
-      pendingUrlRef.current = null;
-      setLoaderData(undefined);
-      setLoaderError(null);
-      setNavigationState("idle");
+      commitRoute(pendingUrl, undefined, [], []);
       return;
     }
 
@@ -194,18 +227,37 @@ export function Router({ routes, NotFound }: RouterProps) {
         await guard(args);
       }
 
-      // loader を実行
-      const data = pendingMatched.route.loader
+      // layout loader を実行（共通 layout はスキップ）
+      const newLayouts = pendingMatched.route.layouts;
+      const sharedCount = getSharedLayoutCount(committedLayoutsRef.current, newLayouts);
+      const layoutDatas: unknown[] = [];
+      for (let i = 0; i < newLayouts.length; i++) {
+        if (cancelled) return;
+        if (i < sharedCount) {
+          layoutDatas.push(layoutLoaderDatasRef.current[i]);
+        } else if (newLayouts[i].loader) {
+          layoutDatas.push(await newLayouts[i].loader!(args));
+        } else {
+          layoutDatas.push(undefined);
+        }
+      }
+
+      // page loader を実行
+      const pageData = pendingMatched.route.loader
         ? await pendingMatched.route.loader(args)
         : undefined;
 
       if (cancelled) return;
       const currentBrowserUrl = window.location.pathname + window.location.search;
       if (currentBrowserUrl !== targetUrl) return;
+
       setCommittedUrl(targetUrl);
       setPendingUrl(null);
       pendingUrlRef.current = null;
-      setLoaderData(data);
+      setPageLoaderData(pageData);
+      setLayoutLoaderDatas(layoutDatas);
+      committedLayoutsRef.current = newLayouts;
+      layoutLoaderDatasRef.current = layoutDatas;
       setLoaderError(null);
       setNavigationState("idle");
     })().catch((err) => {
@@ -239,7 +291,7 @@ export function Router({ routes, NotFound }: RouterProps) {
     committedMatched.route.loader({ params: committedParams, search: committedSearch }).then(
       (data) => {
         if (!cancelled) {
-          setLoaderData(data);
+          setPageLoaderData(data);
         }
       },
       (err) => {
@@ -254,29 +306,45 @@ export function Router({ routes, NotFound }: RouterProps) {
 
   // 初回 guard + loader 実行（ページロード時）
   useEffect(() => {
-    const hasGuards = committedMatched && committedMatched.route.guards.length > 0;
-    const hasLoader = committedMatched?.route.loader;
-    if (!hasGuards && !hasLoader) return;
-    if (loaderData !== undefined) return; // 既にデータがある
+    if (!committedMatched) {
+      setInitialLoadDone(true);
+      return;
+    }
+    const hasGuards = committedMatched.route.guards.length > 0;
+    const hasAnyLoader = routeHasLoader(committedMatched.route);
+    if (!hasGuards && !hasAnyLoader) {
+      setInitialLoadDone(true);
+      return;
+    }
 
     let cancelled = false;
     setNavigationState("loading");
     const args = { params: committedParams, search: committedSearch };
 
     (async () => {
-      if (committedMatched) {
-        for (const guard of committedMatched.route.guards) {
-          if (cancelled) return;
-          await guard(args);
-        }
+      for (const guard of committedMatched.route.guards) {
+        if (cancelled) return;
+        await guard(args);
       }
 
-      const data = committedMatched?.route.loader
+      // layout loader を実行
+      const layoutDatas: unknown[] = [];
+      for (const layout of committedMatched.route.layouts) {
+        if (cancelled) return;
+        layoutDatas.push(layout.loader ? await layout.loader(args) : undefined);
+      }
+
+      // page loader を実行
+      const pageData = committedMatched.route.loader
         ? await committedMatched.route.loader(args)
         : undefined;
 
       if (!cancelled) {
-        setLoaderData(data);
+        setPageLoaderData(pageData);
+        setLayoutLoaderDatas(layoutDatas);
+        committedLayoutsRef.current = committedMatched.route.layouts;
+        layoutLoaderDatasRef.current = layoutDatas;
+        setInitialLoadDone(true);
         setNavigationState("idle");
       }
     })().catch((err) => {
@@ -287,6 +355,7 @@ export function Router({ routes, NotFound }: RouterProps) {
         return;
       }
       setLoaderError(err instanceof Error ? err : new Error(String(err)));
+      setInitialLoadDone(true);
       setNavigationState("idle");
     });
 
@@ -313,9 +382,9 @@ export function Router({ routes, NotFound }: RouterProps) {
       }
     } catch (err) {
       if (committedUrlRef.current === urlAtSubmit) {
+        setActionData({ error: err });
         setNavigationState("idle");
       }
-      throw err;
     }
   }, [committedMatched, committedParams, committedSearch]);
 
@@ -324,11 +393,10 @@ export function Router({ routes, NotFound }: RouterProps) {
       currentPath: committedPath,
       params: committedParams,
       search: committedSearch,
-      loaderData,
       actionData,
       navigationState,
     }),
-    [committedPath, committedParams, committedSearch, loaderData, actionData, navigationState],
+    [committedPath, committedParams, committedSearch, actionData, navigationState],
   );
 
   const dispatchCtx = useMemo<RouterDispatchContextValue>(
@@ -348,7 +416,7 @@ export function Router({ routes, NotFound }: RouterProps) {
     } else {
       throw loaderError;
     }
-  } else if (committedMatched.route.loader && loaderData === undefined) {
+  } else if (!initialLoadDone && routeHasLoader(committedMatched.route)) {
     // 初回ロード中（まだ一度も loader が完了していない）
     const LoadingComp = committedMatched.route.Loading;
     content = LoadingComp ? <LoadingComp /> : null;
@@ -364,13 +432,20 @@ export function Router({ routes, NotFound }: RouterProps) {
     if (committedMatched.route.ErrorBoundary) {
       content = <RouteErrorBoundary key={committedPath} fallback={committedMatched.route.ErrorBoundary}>{content}</RouteErrorBoundary>;
     }
+
+    // page の loader データを Context で提供
+    content = <LoaderDataContext.Provider value={pageLoaderData}>{content}</LoaderDataContext.Provider>;
   }
 
   // layouts を外側から内側にネストして描画（ルートマッチ時のみ）
   if (committedMatched) {
     for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
-      const Layout = committedMatched.route.layouts[i];
-      content = <Layout>{content}</Layout>;
+      const Layout = committedMatched.route.layouts[i].component;
+      content = (
+        <LoaderDataContext.Provider value={layoutLoaderDatas[i]}>
+          <Layout>{content}</Layout>
+        </LoaderDataContext.Provider>
+      );
     }
   }
 
@@ -412,6 +487,20 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
     }
     return this.props.children;
   }
+}
+
+function routeHasLoader(route: Route): boolean {
+  return !!route.loader || route.layouts.some((l) => !!l.loader);
+}
+
+function getSharedLayoutCount(oldLayouts: LayoutEntry[], newLayouts: LayoutEntry[]): number {
+  let shared = 0;
+  const minLen = Math.min(oldLayouts.length, newLayouts.length);
+  for (let i = 0; i < minLen; i++) {
+    if (oldLayouts[i].component === newLayouts[i].component) shared++;
+    else break;
+  }
+  return shared;
 }
 
 function parseSearchParams(url: string): Record<string, string> {
