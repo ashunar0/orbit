@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.9 (2026-03-23)
+
+### Features
+
+- `LoaderArgs` / `ActionArgs<TData>` ヘルパー型を追加
+  - `action` の `data` 型をジェネリクスで指定できるように
+  - インラインの型注釈が不要に
+  - 内部型定義も統一
+
+## 0.1.8 (2026-03-16)
+
+### Bug Fixes
+
+- HMR watcher のリスナークリーンアップと routesPath キャッシュ
+- HMR をファイル編集時 Fast Refresh に切り替え state を保持
+
 ## 0.1.0 (unreleased)
 
 ### Features
