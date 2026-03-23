@@ -197,7 +197,8 @@ export function Router({ routes, NotFound }: RouterProps) {
     prefetchInFlight.current.add(to);
     const toParams = toMatched.params;
     const toSearch = parseSearchParams(to);
-    toMatched.route.loader({ params: toParams, search: toSearch }).then(
+    const controller = new AbortController();
+    toMatched.route.loader({ params: toParams, search: toSearch, signal: controller.signal }).then(
       (data) => {
         prefetchCache.current.set(to, { data, cachedAt: Date.now() });
         prefetchInFlight.current.delete(to);
@@ -220,20 +221,20 @@ export function Router({ routes, NotFound }: RouterProps) {
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
     const pendingParams = pendingMatched.params;
     const pendingSearch = parseSearchParams(pendingUrl);
     const targetUrl = pendingUrl;
-    const args = { params: pendingParams, search: pendingSearch };
+    const args = { params: pendingParams, search: pendingSearch, signal: controller.signal };
 
     (async () => {
       // guard を外側から順に実行
       for (const guard of pendingMatched.route.guards) {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         await guard(args);
       }
 
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
 
       // guard 通過後: prefetch キャッシュを確認（guard ありルートでもキャッシュを活用）
       const newLayouts = pendingMatched.route.layouts;
@@ -245,7 +246,7 @@ export function Router({ routes, NotFound }: RouterProps) {
         // キャッシュヒット + 新規 layout loader なし → loader スキップして即コミット
         prefetchCache.current.delete(targetUrl);
         const newLayoutDatas = carryOverLayoutDatas(newLayouts, sharedCount);
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           commitRoute(targetUrl, cacheEntry.data, newLayoutDatas, newLayouts);
         }
         return;
@@ -254,7 +255,7 @@ export function Router({ routes, NotFound }: RouterProps) {
 
       const layoutDatas: unknown[] = [];
       for (let i = 0; i < newLayouts.length; i++) {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         if (i < sharedCount) {
           layoutDatas.push(layoutLoaderDatasRef.current[i]);
         } else if (newLayouts[i].loader) {
@@ -269,7 +270,7 @@ export function Router({ routes, NotFound }: RouterProps) {
         ? await pendingMatched.route.loader(args)
         : undefined;
 
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
       const currentBrowserUrl = window.location.pathname + window.location.search;
       if (currentBrowserUrl !== targetUrl) return;
 
@@ -284,7 +285,7 @@ export function Router({ routes, NotFound }: RouterProps) {
       setActionData(undefined);
       setNavigationState("idle");
     })().catch((err) => {
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
       // redirect を catch → navigate で飛ばす
       if (isRedirectError(err)) {
         setPendingUrl(null);
@@ -302,7 +303,7 @@ export function Router({ routes, NotFound }: RouterProps) {
       setNavigationState("idle");
     });
 
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, [pendingUrl]);
 
   // action 後の loader 再実行（loaderKey でトリガー）— layout loader も含む
@@ -310,14 +311,14 @@ export function Router({ routes, NotFound }: RouterProps) {
     if (loaderKey === 0) return; // 初回は実行しない
     if (!committedMatched || !routeHasLoader(committedMatched.route)) return;
 
-    let cancelled = false;
-    const args = { params: committedParams, search: committedSearch };
+    const controller = new AbortController();
+    const args = { params: committedParams, search: committedSearch, signal: controller.signal };
 
     (async () => {
       // layout loader を再実行
       const layoutDatas: unknown[] = [];
       for (const layout of committedMatched.route.layouts) {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         layoutDatas.push(layout.loader ? await layout.loader(args) : undefined);
       }
 
@@ -326,18 +327,18 @@ export function Router({ routes, NotFound }: RouterProps) {
         ? await committedMatched.route.loader(args)
         : undefined;
 
-      if (!cancelled) {
+      if (!controller.signal.aborted) {
         setPageLoaderData(pageData);
         setLayoutLoaderDatas(layoutDatas);
         layoutLoaderDatasRef.current = layoutDatas;
       }
     })().catch((err) => {
-      if (!cancelled) {
+      if (!controller.signal.aborted) {
         setLoaderError(err instanceof Error ? err : new Error(String(err)));
       }
     });
 
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, [loaderKey]);
 
   // 初回 guard + loader 実行（ページロード時）
@@ -353,20 +354,20 @@ export function Router({ routes, NotFound }: RouterProps) {
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
     setNavigationState("loading");
-    const args = { params: committedParams, search: committedSearch };
+    const args = { params: committedParams, search: committedSearch, signal: controller.signal };
 
     (async () => {
       for (const guard of committedMatched.route.guards) {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         await guard(args);
       }
 
       // layout loader を実行
       const layoutDatas: unknown[] = [];
       for (const layout of committedMatched.route.layouts) {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         layoutDatas.push(layout.loader ? await layout.loader(args) : undefined);
       }
 
@@ -375,7 +376,7 @@ export function Router({ routes, NotFound }: RouterProps) {
         ? await committedMatched.route.loader(args)
         : undefined;
 
-      if (!cancelled) {
+      if (!controller.signal.aborted) {
         setPageLoaderData(pageData);
         setLayoutLoaderDatas(layoutDatas);
         committedLayoutsRef.current = committedMatched.route.layouts;
@@ -384,7 +385,7 @@ export function Router({ routes, NotFound }: RouterProps) {
         setNavigationState("idle");
       }
     })().catch((err) => {
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
       if (isRedirectError(err)) {
         setNavigationState("idle");
         navigate(err.to, { replace: err.replace });
@@ -395,7 +396,7 @@ export function Router({ routes, NotFound }: RouterProps) {
       setNavigationState("idle");
     });
 
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, []);
 
   const submitAction = useCallback(async (payload: FormData | Record<string, unknown>) => {

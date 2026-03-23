@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.14 (2026-03-23)
+
+### Features
+
+- loader / guard の引数に `signal: AbortSignal` を追加
+  - `fetch("/api", { signal })` のように渡すことでナビゲーション中断時にリクエストもキャンセル可能
+  - StrictMode での二重実行時、1回目の fetch が自動的にキャンセルされる
+  - pending navigation, 初回ロード, action 後の revalidation, prefetch すべてで対応
+
 ## 0.1.13 (2026-03-23)
 
 ### Bug Fixes
