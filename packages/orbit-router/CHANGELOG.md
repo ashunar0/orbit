@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.12 (2026-03-23)
+
+### Bug Fixes
+
+- `page.tsx` 内に co-locate された `loader` / `action` が認識されない問題を修正
+  - `layout.tsx` では `import *` で全 export を読むため co-locate した loader が動作していたが、`page.tsx` では別ファイル (`loader.ts`) のみ検出する仕様だった
+  - page も `import * as PageMod` で静的 import し、別ファイルがない場合は `PageMod.loader` / `PageMod.action` をフォールバックとして使用するように統一
+  - 別ファイル (`loader.ts` / `action.ts`) がある場合はそちらが優先される（従来通り）
+
 ## 0.1.11 (2026-03-23)
 
 ### Features
