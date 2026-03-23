@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.10 (2026-03-23)
+
+### Features
+
+- `redirect()` が内部で throw するように変更 — 呼び出し側の `throw` が不要に
+  - guard / loader / action すべてで `redirect("/path")` だけで遷移できる
+  - action の catch で `isRedirectError` を拾いナビゲーション実行
+  - action redirect 時の `navigationState` リセット漏れも修正
+
+### Breaking Changes
+
+- `redirect()` の戻り値が `RedirectError` → `never` に変更
+  - 既存の `throw redirect(...)` はランタイムでは動作するが、TypeScript が unreachable code 警告を出す
+  - `throw` を削除して `redirect(...)` に書き換えてください
+
 ## 0.1.9 (2026-03-23)
 
 ### Features
