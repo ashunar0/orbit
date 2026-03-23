@@ -84,8 +84,12 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
   let loadingCounter = 0;
   let errorCounter = 0;
 
+  let pageModCounter = 0;
+
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
+    const pageModName = `PageMod${pageModCounter++}`;
+    imports.push(`import * as ${pageModName} from "${toImportPath(route.filePath)}";`);
     lazyDecls.push(`const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`);
 
     const layoutModNames = route.layouts.map((lp) => getLayoutModName(lp));
@@ -100,12 +104,18 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
       const name = `loader${loaderCounter++}`;
       imports.push(`import { loader as ${name} } from "${toImportPath(route.loaderPath)}";`);
       fields.push(`loader: ${name}`);
+    } else {
+      // page.tsx 内に co-locate された loader をフォールバックとして使用
+      fields.push(`loader: ${pageModName}.loader`);
     }
 
     if (route.actionPath) {
       const name = `action${actionCounter++}`;
       imports.push(`import { action as ${name} } from "${toImportPath(route.actionPath)}";`);
       fields.push(`action: ${name}`);
+    } else {
+      // page.tsx 内に co-locate された action をフォールバックとして使用
+      fields.push(`action: ${pageModName}.action`);
     }
 
     if (route.loadingPath) {
