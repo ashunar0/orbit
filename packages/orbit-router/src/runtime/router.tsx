@@ -1,12 +1,13 @@
 import { Component, Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type LazyExoticComponent, type ReactNode } from "react";
 import { matchRoute } from "./match";
 import { isRedirectError } from "./redirect";
+import type { LoaderArgs, ActionArgs } from "../types";
 
 type LayoutComponent = ComponentType<{ children: ReactNode }>;
 
-type LoaderFunction = (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<unknown>;
+type LoaderFunction = (args: LoaderArgs) => Promise<unknown>;
 
-type GuardFunction = (args: { params: Record<string, string>; search: Record<string, string> }) => Promise<void>;
+type GuardFunction = (args: LoaderArgs) => Promise<void>;
 
 interface LayoutEntry {
   component: LayoutComponent;
@@ -19,7 +20,7 @@ interface Route {
   layouts: LayoutEntry[];
   guards: GuardFunction[];
   loader?: LoaderFunction;
-  action?: (args: { params: Record<string, string>; search: Record<string, string>; data?: unknown; formData?: FormData }) => Promise<unknown>;
+  action?: (args: ActionArgs) => Promise<unknown>;
   Loading?: ComponentType;
   ErrorBoundary?: ComponentType<{ error: Error }>;
 }
