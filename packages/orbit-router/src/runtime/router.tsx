@@ -233,9 +233,25 @@ export function Router({ routes, NotFound }: RouterProps) {
         await guard(args);
       }
 
-      // layout loader を実行（共通 layout はスキップ）
+      if (cancelled) return;
+
+      // guard 通過後: prefetch キャッシュを確認（guard ありルートでもキャッシュを活用）
       const newLayouts = pendingMatched.route.layouts;
       const sharedCount = getSharedLayoutCount(committedLayoutsRef.current, newLayouts);
+      const hasNewLayoutLoaders = newLayouts.slice(sharedCount).some((l) => l.loader);
+
+      const cacheEntry = prefetchCache.current.get(targetUrl);
+      if (cacheEntry && Date.now() - cacheEntry.cachedAt < PREFETCH_TTL && !hasNewLayoutLoaders) {
+        // キャッシュヒット + 新規 layout loader なし → loader スキップして即コミット
+        prefetchCache.current.delete(targetUrl);
+        const newLayoutDatas = carryOverLayoutDatas(newLayouts, sharedCount);
+        if (!cancelled) {
+          commitRoute(targetUrl, cacheEntry.data, newLayoutDatas, newLayouts);
+        }
+        return;
+      }
+      prefetchCache.current.delete(targetUrl); // TTL 切れのエントリを削除
+
       const layoutDatas: unknown[] = [];
       for (let i = 0; i < newLayouts.length; i++) {
         if (cancelled) return;
