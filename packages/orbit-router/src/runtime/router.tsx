@@ -396,6 +396,11 @@ export function Router({ routes, NotFound }: RouterProps) {
         setLoaderKey((k) => k + 1);
       }
     } catch (err) {
+      if (isRedirectError(err)) {
+        setNavigationState("idle");
+        navigate(err.to, { replace: err.replace });
+        return;
+      }
       if (committedUrlRef.current === urlAtSubmit) {
         setActionData({ error: err });
         setNavigationState("idle");
