@@ -44,9 +44,14 @@ export interface RouterDispatchContextValue {
 const RouterStateContext = createContext<RouterStateContextValue | null>(null);
 const RouterDispatchContext = createContext<RouterDispatchContextValue | null>(null);
 const LoaderDataContext = createContext<unknown>(undefined);
+const LayoutDataContext = createContext<unknown>(undefined);
 
 export function useLoaderDataContext(): unknown {
   return useContext(LoaderDataContext);
+}
+
+export function useLayoutDataContext(): unknown {
+  return useContext(LayoutDataContext);
 }
 
 export function useRouterStateContext(): RouterStateContextValue {
@@ -454,17 +459,29 @@ export function Router({ routes, NotFound }: RouterProps) {
     }
 
     // page の loader データを Context で提供
-    content = <LoaderDataContext.Provider value={pageLoaderData}>{content}</LoaderDataContext.Provider>;
+    // LayoutDataContext = 直近の親 layout の loader data（page 内から useLayoutData() で取得可能）
+    const innermostLayoutData = committedMatched.route.layouts.length > 0
+      ? layoutLoaderDatas[committedMatched.route.layouts.length - 1]
+      : undefined;
+    content = (
+      <LayoutDataContext.Provider value={innermostLayoutData}>
+        <LoaderDataContext.Provider value={pageLoaderData}>{content}</LoaderDataContext.Provider>
+      </LayoutDataContext.Provider>
+    );
   }
 
   // layouts を外側から内側にネストして描画（ルートマッチ時のみ）
   if (committedMatched) {
     for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
       const Layout = committedMatched.route.layouts[i].component;
+      // 親 layout の loader data を LayoutDataContext で提供（最外側は undefined）
+      const parentLayoutData = i > 0 ? layoutLoaderDatas[i - 1] : undefined;
       content = (
-        <LoaderDataContext.Provider value={layoutLoaderDatas[i]}>
-          <Layout>{content}</Layout>
-        </LoaderDataContext.Provider>
+        <LayoutDataContext.Provider value={parentLayoutData}>
+          <LoaderDataContext.Provider value={layoutLoaderDatas[i]}>
+            <Layout>{content}</Layout>
+          </LoaderDataContext.Provider>
+        </LayoutDataContext.Provider>
       );
     }
   }

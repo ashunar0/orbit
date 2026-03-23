@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.11 (2026-03-23)
+
+### Features
+
+- `useLayoutData()` hook を追加 — page から直近の親 layout の loader データを取得可能に
+- README を全面更新 — layout loader, redirect, Form, 型ヘルパーのドキュメントを追加
+
 ## 0.1.10 (2026-03-23)
 
 ### Features

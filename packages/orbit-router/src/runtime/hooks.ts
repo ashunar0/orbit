@@ -1,4 +1,4 @@
-import { useRouterStateContext, useRouterDispatchContext, useLoaderDataContext, type NavigationState } from "./router";
+import { useRouterStateContext, useRouterDispatchContext, useLoaderDataContext, useLayoutDataContext, type NavigationState } from "./router";
 
 export function useParams(): Record<string, string> {
   return useRouterStateContext().params;
@@ -14,6 +14,18 @@ export function useParams(): Record<string, string> {
  */
 export function useLoaderData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> {
   return useLoaderDataContext() as Awaited<ReturnType<T>>;
+}
+
+/**
+ * 直近の親 layout の loader データを型付きで取得する。
+ * page から親 layout のデータにアクセスしたい場合に使う。
+ *
+ * @example
+ * import type { loader } from '../loader'  // layout の loader
+ * const data = useLayoutData<typeof loader>()
+ */
+export function useLayoutData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> {
+  return useLayoutDataContext() as Awaited<ReturnType<T>>;
 }
 
 /**

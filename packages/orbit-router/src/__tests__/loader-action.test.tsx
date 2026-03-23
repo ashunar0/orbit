@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { cleanup, render, screen, waitFor, act } from "@testing-library/react";
 import { Router } from "../runtime/router";
-import { useLoaderData, useActionData, useSubmit, useSearchParams, useNavigate } from "../runtime/hooks";
+import { useLoaderData, useLayoutData, useActionData, useSubmit, useSearchParams, useNavigate } from "../runtime/hooks";
 import { Form } from "../runtime/form";
 
 function LoaderPage() {
@@ -557,5 +557,78 @@ describe("Layout Loader Skip", () => {
       expect(screen.getByTestId("different-layout").textContent).toBe("DifferentLayout: different");
     });
     expect(differentLoaderSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+// --- useLayoutData テスト ---
+
+function PageUsingLayoutData() {
+  const layoutData = useLayoutData() as { user: string } | undefined;
+  const pageData = useLoaderData() as { items: string[] };
+  return (
+    <div>
+      <div data-testid="layout-data-from-page">LayoutUser: {layoutData?.user ?? "none"}</div>
+      <div data-testid="page-data">Items: {pageData.items.join(", ")}</div>
+    </div>
+  );
+}
+
+function PageUsingLayoutDataNoPageLoader() {
+  const layoutData = useLayoutData() as { user: string } | undefined;
+  return <div data-testid="layout-data-from-page">LayoutUser: {layoutData?.user ?? "none"}</div>;
+}
+
+const useLayoutDataRoutes = [
+  {
+    path: "/layout-data-test",
+    component: PageUsingLayoutData,
+    layouts: [{ component: LayoutWithLoader, loader: layoutLoader }],
+    guards: [],
+    loader: pageInLayoutLoader,
+    Loading: LoadingComp,
+  },
+  {
+    path: "/layout-data-no-page-loader",
+    component: PageUsingLayoutDataNoPageLoader,
+    layouts: [{ component: LayoutWithLoader, loader: layoutLoader }],
+    guards: [],
+    Loading: LoadingComp,
+  },
+  {
+    path: "/layout-data-no-layout-loader",
+    component: PageUsingLayoutDataNoPageLoader,
+    layouts: [{ component: LayoutWithLoader }],
+    guards: [],
+  },
+];
+
+describe("useLayoutData", () => {
+  beforeEach(() => {
+    window.history.pushState(null, "", "/");
+  });
+
+  afterEach(cleanup);
+
+  it("page から直近の親 layout の loader データを取得できる", async () => {
+    window.history.pushState(null, "", "/layout-data-test");
+    render(<Router routes={useLayoutDataRoutes} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("layout-data-from-page").textContent).toBe("LayoutUser: あさひ");
+      expect(screen.getByTestId("page-data").textContent).toBe("Items: a, b, c");
+    });
+  });
+
+  it("page に loader がなくても layout data を取得できる", async () => {
+    window.history.pushState(null, "", "/layout-data-no-page-loader");
+    render(<Router routes={useLayoutDataRoutes} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("layout-data-from-page").textContent).toBe("LayoutUser: あさひ");
+    });
+  });
+
+  it("layout に loader がない場合は undefined", () => {
+    window.history.pushState(null, "", "/layout-data-no-layout-loader");
+    render(<Router routes={useLayoutDataRoutes} />);
+    expect(screen.getByTestId("layout-data-from-page").textContent).toBe("LayoutUser: none");
   });
 });
