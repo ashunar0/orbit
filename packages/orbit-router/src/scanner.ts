@@ -72,7 +72,7 @@ async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Prom
   if (pageFile) {
     const relativePath = path.relative(routesRoot, dir);
     const urlPath = dirToUrlPath(relativePath);
-    const layouts = collectLayouts(dir, routesRoot);
+    const layouts = collectLayouts(dir, routesRoot, dir);
 
     const entry: RouteEntry = {
       path: urlPath,
@@ -105,8 +105,11 @@ async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Prom
 /**
  * 現在のディレクトリから routes ルートまで遡り、layout ファイルと error ファイルを収集する。
  * 返却順は外側（ルート）から内側（現在のディレクトリ）。
+ *
+ * pageDir と同ディレクトリの error.tsx は page 専属（RouteEntry.errorPath）なので
+ * LayoutInfo には含めない。これにより同じ error.tsx が二重登録されるのを防ぐ。
  */
-function collectLayouts(dir: string, routesRoot: string): LayoutInfo[] {
+function collectLayouts(dir: string, routesRoot: string, pageDir: string): LayoutInfo[] {
   const layouts: LayoutInfo[] = [];
   let current = dir;
 
@@ -114,8 +117,11 @@ function collectLayouts(dir: string, routesRoot: string): LayoutInfo[] {
     const layoutPath = findFile(current, "layout");
     if (layoutPath) {
       const info: LayoutInfo = { layoutPath };
-      const errorPath = findFile(current, "error");
-      if (errorPath) info.errorPath = errorPath;
+      // page と同ディレクトリの error.tsx は page 側で管理するのでスキップ
+      if (current !== pageDir) {
+        const errorPath = findFile(current, "error");
+        if (errorPath) info.errorPath = errorPath;
+      }
       layouts.push(info);
     }
 

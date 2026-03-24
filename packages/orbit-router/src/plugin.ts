@@ -71,6 +71,11 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
   // layout 階層の error.tsx import を管理
   const layoutErrorImportMap = new Map<string, string>();
 
+  let loaderCounter = 0;
+  let actionCounter = 0;
+  let loadingCounter = 0;
+  let errorCounter = 0;
+
   function getLayoutModName(layoutPath: string): string {
     let name = layoutImportMap.get(layoutPath);
     if (!name) {
@@ -90,11 +95,6 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     }
     return name;
   }
-
-  let loaderCounter = 0;
-  let actionCounter = 0;
-  let loadingCounter = 0;
-  let errorCounter = 0;
 
   let pageModCounter = 0;
 

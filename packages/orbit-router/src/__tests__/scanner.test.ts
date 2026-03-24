@@ -144,4 +144,44 @@ describe("scanRoutes", () => {
     const { notFoundPath } = await scanRoutes(tmpDir, "routes");
     expect(notFoundPath).toBeUndefined();
   });
+
+  it("collects error.tsx in layout directory into LayoutInfo.errorPath", async () => {
+    createFile("layout.tsx");
+    createFile("error.tsx", "export default () => 'Root Error'");
+    createFile("users/page.tsx");
+    const { routes } = await scanRoutes(tmpDir, "routes");
+    const userRoute = routes.find((r) => r.path === "/users");
+    expect(userRoute!.layouts).toHaveLength(1);
+    expect(userRoute!.layouts[0].errorPath).toContain("error.tsx");
+  });
+
+  it("does not duplicate error.tsx when layout and page are in the same directory", async () => {
+    createFile("users/layout.tsx");
+    createFile("users/page.tsx");
+    createFile("users/error.tsx", "export default () => 'Error'");
+    const { routes } = await scanRoutes(tmpDir, "routes");
+    const userRoute = routes.find((r) => r.path === "/users");
+    // error.tsx は page 側（errorPath）に属する
+    expect(userRoute!.errorPath).toContain("error.tsx");
+    // 同ディレクトリの layout には error.tsx が入らない
+    const innermostLayout = userRoute!.layouts[userRoute!.layouts.length - 1];
+    expect(innermostLayout.errorPath).toBeUndefined();
+  });
+
+  it("bubbles error.tsx from parent layout when child has none", async () => {
+    createFile("layout.tsx");
+    createFile("error.tsx", "export default () => 'Root Error'");
+    createFile("users/layout.tsx");
+    // users/ には error.tsx なし
+    createFile("users/[id]/page.tsx");
+    const { routes } = await scanRoutes(tmpDir, "routes");
+    const idRoute = routes.find((r) => r.path === "/users/:id");
+    expect(idRoute!.layouts).toHaveLength(2);
+    // root layout has error.tsx
+    expect(idRoute!.layouts[0].errorPath).toContain("error.tsx");
+    // users layout has no error.tsx
+    expect(idRoute!.layouts[1].errorPath).toBeUndefined();
+    // page has no error.tsx
+    expect(idRoute!.errorPath).toBeUndefined();
+  });
 });

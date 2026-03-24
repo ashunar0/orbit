@@ -86,7 +86,8 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
   const [layoutLoaderDatas, setLayoutLoaderDatas] = useState<unknown[]>([]);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [actionData, setActionData] = useState<unknown>(undefined);
-  const [loaderError, setLoaderError] = useState<Error | null>(null);
+  // loaderError: エラー本体 + 失敗した階層（バブリング開始位置を決めるため）
+  const [loaderError, setLoaderError] = useState<{ error: Error; origin: ErrorOrigin } | null>(null);
   const [navigationState, setNavigationState] = useState<NavigationState>("idle");
   const [loaderKey, setLoaderKey] = useState(0);
   // 前回コミットした layout を追跡（skip 判定用）
@@ -229,8 +230,11 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
     const targetUrl = pendingUrl;
     const args = { params: pendingParams, search: pendingSearch, signal: controller.signal };
 
+    let errorOrigin: ErrorOrigin = { kind: "page" };
+
     (async () => {
       // guard を外側から順に実行
+      errorOrigin = { kind: "guard" };
       for (const guard of pendingMatched.route.guards) {
         if (controller.signal.aborted) return;
         await guard(args);
@@ -261,6 +265,7 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
         if (i < sharedCount) {
           layoutDatas.push(layoutLoaderDatasRef.current[i]);
         } else if (newLayouts[i].loader) {
+          errorOrigin = { kind: "layout", index: i };
           layoutDatas.push(await newLayouts[i].loader!(args));
         } else {
           layoutDatas.push(undefined);
@@ -268,6 +273,7 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
       }
 
       // page loader を実行
+      errorOrigin = { kind: "page" };
       const pageData = pendingMatched.route.loader
         ? await pendingMatched.route.loader(args)
         : undefined;
@@ -301,7 +307,8 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
       setCommittedUrl(targetUrl);
       setPendingUrl(null);
       pendingUrlRef.current = null;
-      setLoaderError(err instanceof Error ? err : new Error(String(err)));
+      const error = err instanceof Error ? err : new Error(String(err));
+      setLoaderError({ error, origin: errorOrigin });
       setNavigationState("idle");
     });
 
@@ -315,16 +322,24 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
 
     const controller = new AbortController();
     const args = { params: committedParams, search: committedSearch, signal: controller.signal };
+    let errorOrigin: ErrorOrigin = { kind: "page" };
 
     (async () => {
       // layout loader を再実行
       const layoutDatas: unknown[] = [];
-      for (const layout of committedMatched.route.layouts) {
+      for (let i = 0; i < committedMatched.route.layouts.length; i++) {
         if (controller.signal.aborted) return;
-        layoutDatas.push(layout.loader ? await layout.loader(args) : undefined);
+        const layout = committedMatched.route.layouts[i];
+        if (layout.loader) {
+          errorOrigin = { kind: "layout", index: i };
+          layoutDatas.push(await layout.loader(args));
+        } else {
+          layoutDatas.push(undefined);
+        }
       }
 
       // page loader を再実行
+      errorOrigin = { kind: "page" };
       const pageData = committedMatched.route.loader
         ? await committedMatched.route.loader(args)
         : undefined;
@@ -336,7 +351,8 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
       }
     })().catch((err) => {
       if (!controller.signal.aborted) {
-        setLoaderError(err instanceof Error ? err : new Error(String(err)));
+        const error = err instanceof Error ? err : new Error(String(err));
+        setLoaderError({ error, origin: errorOrigin });
       }
     });
 
@@ -359,8 +375,10 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
     const controller = new AbortController();
     setNavigationState("loading");
     const args = { params: committedParams, search: committedSearch, signal: controller.signal };
+    let errorOrigin: ErrorOrigin = { kind: "page" };
 
     (async () => {
+      errorOrigin = { kind: "guard" };
       for (const guard of committedMatched.route.guards) {
         if (controller.signal.aborted) return;
         await guard(args);
@@ -368,12 +386,19 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
 
       // layout loader を実行
       const layoutDatas: unknown[] = [];
-      for (const layout of committedMatched.route.layouts) {
+      for (let i = 0; i < committedMatched.route.layouts.length; i++) {
         if (controller.signal.aborted) return;
-        layoutDatas.push(layout.loader ? await layout.loader(args) : undefined);
+        const layout = committedMatched.route.layouts[i];
+        if (layout.loader) {
+          errorOrigin = { kind: "layout", index: i };
+          layoutDatas.push(await layout.loader(args));
+        } else {
+          layoutDatas.push(undefined);
+        }
       }
 
       // page loader を実行
+      errorOrigin = { kind: "page" };
       const pageData = committedMatched.route.loader
         ? await committedMatched.route.loader(args)
         : undefined;
@@ -393,7 +418,8 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
         navigate(err.to, { replace: err.replace });
         return;
       }
-      setLoaderError(err instanceof Error ? err : new Error(String(err)));
+      const error = err instanceof Error ? err : new Error(String(err));
+      setLoaderError({ error, origin: errorOrigin });
       setInitialLoadDone(true);
       setNavigationState("idle");
     });
@@ -454,14 +480,14 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
   if (!committedMatched) {
     content = NotFound ? <NotFound /> : <div>404 — Not Found</div>;
   } else if (loaderError) {
-    // loader エラー: page → 内側 layout → 外側 layout の順で最も近い ErrorBoundary を探す
-    const ErrorComp = findNearestErrorBoundary(committedMatched.route);
+    // loader エラー: 失敗した階層から親方向に最も近い ErrorBoundary を探す
+    const ErrorComp = findNearestErrorBoundary(committedMatched.route, loaderError.origin);
     if (ErrorComp) {
-      content = <ErrorComp error={loaderError} />;
+      content = <ErrorComp error={loaderError.error} />;
     } else if (ErrorFallback) {
-      content = <ErrorFallback error={loaderError} />;
+      content = <ErrorFallback error={loaderError.error} />;
     } else {
-      throw loaderError;
+      throw loaderError.error;
     }
   } else if (!initialLoadDone && routeHasLoader(committedMatched.route)) {
     // 初回ロード中（まだ一度も loader が完了していない）
@@ -494,11 +520,17 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
   }
 
   // layouts を外側から内側にネストして描画（ルートマッチ時のみ）
-  // 各 layout に ErrorBoundary がある場合はラップして、render エラーが親へバブルする構造にする
+  // ErrorBoundary は layout の内側（children を包む位置）に配置する。
+  // これにより layout 自身のエラーは親の ErrorBoundary でキャッチされ、Next.js と同じ挙動になる。
+  // 結果のツリー: Layout0 > [EB0] > Layout1 > [EB1] > Page
   if (committedMatched) {
     for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
       const layout = committedMatched.route.layouts[i];
       const Layout = layout.component;
+      // ErrorBoundary は Layout の内側に配置（children のエラーだけキャッチ）
+      if (layout.ErrorBoundary) {
+        content = <RouteErrorBoundary key={`${committedPath}-layout-${i}`} fallback={layout.ErrorBoundary}>{content}</RouteErrorBoundary>;
+      }
       // 親 layout の loader data を LayoutDataContext で提供（最外側は undefined）
       const parentLayoutData = i > 0 ? layoutLoaderDatas[i - 1] : undefined;
       content = (
@@ -508,10 +540,6 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
           </LoaderDataContext.Provider>
         </LayoutDataContext.Provider>
       );
-      // layout の ErrorBoundary は layout の外側に配置（layout 自身のエラーは親でキャッチ）
-      if (layout.ErrorBoundary) {
-        content = <RouteErrorBoundary key={`${committedPath}-layout-${i}`} fallback={layout.ErrorBoundary}>{content}</RouteErrorBoundary>;
-      }
     }
   }
 
@@ -560,16 +588,31 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
   }
 }
 
+/** エラーの発生元を表す型 */
+type ErrorOrigin =
+  | { kind: "page" }
+  | { kind: "layout"; index: number }
+  | { kind: "guard" };
+
 /**
- * page → 内側 layout → 外側 layout の順で最も近い ErrorBoundary を探す。
- * loader エラーのバブリングに使用。
+ * エラー発生元から親方向に最も近い ErrorBoundary を探す。
+ *
+ * - page エラー → page の ErrorBoundary → 内側 layout → ... → 外側 layout
+ * - layout[i] エラー → layout[i] は自分自身をキャッチしない → layout[i-1] → ... → layout[0]
+ * - guard エラー → page と同じ扱い（guard は全体のゲートなので最も近い EB を使う）
  */
-function findNearestErrorBoundary(route: Route): ComponentType<{ error: Error }> | undefined {
-  // まず page レベルの ErrorBoundary を確認
-  if (route.ErrorBoundary) return route.ErrorBoundary;
-  // layout を内側から外側へ走査
-  for (let i = route.layouts.length - 1; i >= 0; i--) {
-    if (route.layouts[i].ErrorBoundary) return route.layouts[i].ErrorBoundary;
+function findNearestErrorBoundary(route: Route, origin: ErrorOrigin): ComponentType<{ error: Error }> | undefined {
+  if (origin.kind === "page" || origin.kind === "guard") {
+    // page / guard エラー: page EB → 内側 layout → 外側 layout
+    if (route.ErrorBoundary) return route.ErrorBoundary;
+    for (let i = route.layouts.length - 1; i >= 0; i--) {
+      if (route.layouts[i].ErrorBoundary) return route.layouts[i].ErrorBoundary;
+    }
+  } else {
+    // layout[i] エラー: layout[i] の EB は自身をキャッチしない → i-1 から外側へ探索
+    for (let i = origin.index - 1; i >= 0; i--) {
+      if (route.layouts[i].ErrorBoundary) return route.layouts[i].ErrorBoundary;
+    }
   }
   return undefined;
 }

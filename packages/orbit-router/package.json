@@ -1,6 +1,6 @@
 {
   "name": "orbit-router",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Directory-based, type-safe router for Vite+ and React.",
   "license": "MIT",
   "author": "ashunar0",
