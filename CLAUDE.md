@@ -114,6 +114,11 @@ routes/users/[id]/page.tsx   → /users/:id
 - `@vitejs/plugin-react` の deprecation 警告 → `@vitejs/plugin-react-oxc` に置換すれば解消
 - Node.js 22+ 推奨だが、現環境は v20（動作はする）
 
+## リリース時のルール
+
+- バージョンアップ（publish）したら必ず `packages/orbit-router/CHANGELOG.md` にパッチノートを記録する
+- 忘れずに同じコミットか直後のコミットで追加すること
+
 ## npm publish 手順
 
 ```bash
