@@ -523,8 +523,19 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
   // ErrorBoundary は layout の内側（children を包む位置）に配置する。
   // これにより layout 自身のエラーは親の ErrorBoundary でキャッチされ、Next.js と同じ挙動になる。
   // 結果のツリー: Layout0 > [EB0] > Layout1 > [EB1] > Page
+  //
+  // loader エラー時は失敗した階層以降の layout をスキップする:
+  //   page エラー → 全 layout をラップ（layout は全て成功済み）
+  //   layout[i] エラー → layout[0..i-1] のみラップ（失敗した layout 自体はレンダリングしない）
+  //   guard エラー → layout なし（guard は全体のゲート）
+  const layoutWrapCount = loaderError
+    ? loaderError.origin.kind === "page" ? committedMatched?.route.layouts.length ?? 0
+    : loaderError.origin.kind === "layout" ? loaderError.origin.index
+    : 0 // guard
+    : committedMatched?.route.layouts.length ?? 0;
+
   if (committedMatched) {
-    for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
+    for (let i = Math.min(committedMatched.route.layouts.length, layoutWrapCount) - 1; i >= 0; i--) {
       const layout = committedMatched.route.layouts[i];
       const Layout = layout.component;
       // ErrorBoundary は Layout の内側に配置（children のエラーだけキャッチ）
