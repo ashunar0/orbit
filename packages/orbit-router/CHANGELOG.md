@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.16 (2026-03-24)
+
+### Bug Fixes
+
+- layout loader エラー時に失敗した layout 自体をレンダリングしないように修正
+  - layout loader が throw した場合、その layout と子 layout をスキップしてエラー表示のみレンダリング
+  - page エラーは全 layout をラップ、layout[i] エラーは 0..i-1 のみ、guard エラーは layout なし
+
+## 0.1.15 (2026-03-24)
+
+### Features
+
+- error.tsx のバブリングと Router レベルの `ErrorFallback` を実装
+  - error.tsx がないルートでエラーが発生した場合、最も近い親ルートの error.tsx まで自動バブルアップ
+  - layout ディレクトリにも error.tsx を配置可能に（Next.js App Router と同じ挙動）
+  - `<Router ErrorFallback={...} />` prop で最外殻のフォールバックを指定可能
+  - どの error.tsx にもキャッチされない場合に白画面を防止
+
+### Bug Fixes
+
+- ErrorBoundary を layout の内側に配置し、layout 自身ではなく children のエラーのみキャッチするように修正
+- loader エラーのバブリングで失敗した階層（`ErrorOrigin`）を追跡し、正しい ErrorBoundary から探索開始
+- page と同ディレクトリの error.tsx が layout 側にも二重登録される問題を修正
+- plugin の `errorCounter` 宣言順を修正（TDZ リスク解消）
+
 ## 0.1.14 (2026-03-23)
 
 ### Features
