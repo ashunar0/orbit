@@ -1,13 +1,20 @@
 import fs from "node:fs";
 import path from "node:path";
 
+export interface LayoutInfo {
+  /** layout.tsx のフルパス */
+  layoutPath: string;
+  /** 同ディレクトリの error.tsx のフルパス（存在する場合） */
+  errorPath?: string;
+}
+
 export interface RouteEntry {
   /** URL パス（例: "/", "/users", "/users/:id"） */
   path: string;
   /** page.tsx のフルパス */
   filePath: string;
-  /** layout.tsx のフルパス一覧（外側から内側の順） */
-  layouts: string[];
+  /** layout 情報一覧（外側から内側の順） */
+  layouts: LayoutInfo[];
   /** loader.ts のフルパス（存在する場合） */
   loaderPath?: string;
   /** action.ts のフルパス（存在する場合） */
@@ -96,17 +103,20 @@ async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Prom
 }
 
 /**
- * 現在のディレクトリから routes ルートまで遡り、layout ファイルを収集する。
+ * 現在のディレクトリから routes ルートまで遡り、layout ファイルと error ファイルを収集する。
  * 返却順は外側（ルート）から内側（現在のディレクトリ）。
  */
-function collectLayouts(dir: string, routesRoot: string): string[] {
-  const layouts: string[] = [];
+function collectLayouts(dir: string, routesRoot: string): LayoutInfo[] {
+  const layouts: LayoutInfo[] = [];
   let current = dir;
 
   while (true) {
     const layoutPath = findFile(current, "layout");
     if (layoutPath) {
-      layouts.push(layoutPath);
+      const info: LayoutInfo = { layoutPath };
+      const errorPath = findFile(current, "error");
+      if (errorPath) info.errorPath = errorPath;
+      layouts.push(info);
     }
 
     if (current === routesRoot) break;

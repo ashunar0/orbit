@@ -68,6 +68,8 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
   // layout の重複 import を防ぐ
   const layoutImportMap = new Map<string, string>();
   let layoutCounter = 0;
+  // layout 階層の error.tsx import を管理
+  const layoutErrorImportMap = new Map<string, string>();
 
   function getLayoutModName(layoutPath: string): string {
     let name = layoutImportMap.get(layoutPath);
@@ -75,6 +77,16 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
       name = `LayoutMod${layoutCounter++}`;
       layoutImportMap.set(layoutPath, name);
       imports.push(`import * as ${name} from "${toImportPath(layoutPath)}";`);
+    }
+    return name;
+  }
+
+  function getLayoutErrorName(errorPath: string): string {
+    let name = layoutErrorImportMap.get(errorPath);
+    if (!name) {
+      name = `LayoutError${errorCounter++}`;
+      layoutErrorImportMap.set(errorPath, name);
+      imports.push(`import ${name} from "${toImportPath(errorPath)}";`);
     }
     return name;
   }
@@ -92,11 +104,20 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     imports.push(`import * as ${pageModName} from "${toImportPath(route.filePath)}";`);
     lazyDecls.push(`const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`);
 
-    const layoutModNames = route.layouts.map((lp) => getLayoutModName(lp));
+    const layoutModNames = route.layouts.map((l) => getLayoutModName(l.layoutPath));
+    const layoutEntries = route.layouts.map((l, idx) => {
+      const m = layoutModNames[idx];
+      let entry = `{ component: ${m}.default, loader: ${m}.loader`;
+      if (l.errorPath) {
+        entry += `, ErrorBoundary: ${getLayoutErrorName(l.errorPath)}`;
+      }
+      entry += ` }`;
+      return entry;
+    });
     const fields: string[] = [
       `path: "${route.path}"`,
       `component: ${componentName}`,
-      `layouts: [${layoutModNames.map((m) => `{ component: ${m}.default, loader: ${m}.loader }`).join(", ")}]`,
+      `layouts: [${layoutEntries.join(", ")}]`,
       `guards: [${layoutModNames.map((m) => `${m}.guard`).join(", ")}].filter(Boolean)`,
     ];
 

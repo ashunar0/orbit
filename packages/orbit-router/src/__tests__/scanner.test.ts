@@ -66,7 +66,7 @@ describe("scanRoutes", () => {
     createFile("layout.tsx", "export default ({ children }) => children");
     const { routes } = await scanRoutes(tmpDir, "routes");
     expect(routes[0].layouts).toHaveLength(1);
-    expect(routes[0].layouts[0]).toContain("layout.tsx");
+    expect(routes[0].layouts[0].layoutPath).toContain("layout.tsx");
   });
 
   it("collects nested layouts in outer-to-inner order", async () => {
@@ -78,8 +78,8 @@ describe("scanRoutes", () => {
     expect(userRoute).toBeDefined();
     expect(userRoute!.layouts).toHaveLength(2);
     // First layout should be root, second should be users
-    expect(userRoute!.layouts[0]).toContain(path.join("routes", "layout.tsx"));
-    expect(userRoute!.layouts[1]).toContain(
+    expect(userRoute!.layouts[0].layoutPath).toContain(path.join("routes", "layout.tsx"));
+    expect(userRoute!.layouts[1].layoutPath).toContain(
       path.join("routes", "users", "layout.tsx"),
     );
   });

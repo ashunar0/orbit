@@ -12,6 +12,7 @@ type GuardFunction = (args: LoaderArgs) => Promise<void>;
 interface LayoutEntry {
   component: LayoutComponent;
   loader?: LoaderFunction;
+  ErrorBoundary?: ComponentType<{ error: Error }>;
 }
 
 interface Route {
@@ -73,9 +74,10 @@ export function useRouterDispatchContext(): RouterDispatchContextValue {
 interface RouterProps {
   routes: Route[];
   NotFound?: ComponentType;
+  ErrorFallback?: ComponentType<{ error: Error }>;
 }
 
-export function Router({ routes, NotFound }: RouterProps) {
+export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
   // committedUrl = 表示中のルート、pendingUrl = 遷移先（loader 実行中）
   const [committedUrl, setCommittedUrl] = useState(() => window.location.pathname + window.location.search);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
@@ -452,9 +454,12 @@ export function Router({ routes, NotFound }: RouterProps) {
   if (!committedMatched) {
     content = NotFound ? <NotFound /> : <div>404 — Not Found</div>;
   } else if (loaderError) {
-    const ErrorComp = committedMatched.route.ErrorBoundary;
+    // loader エラー: page → 内側 layout → 外側 layout の順で最も近い ErrorBoundary を探す
+    const ErrorComp = findNearestErrorBoundary(committedMatched.route);
     if (ErrorComp) {
       content = <ErrorComp error={loaderError} />;
+    } else if (ErrorFallback) {
+      content = <ErrorFallback error={loaderError} />;
     } else {
       throw loaderError;
     }
@@ -471,6 +476,7 @@ export function Router({ routes, NotFound }: RouterProps) {
       </Suspense>
     );
 
+    // page レベルの ErrorBoundary（render エラーキャッチ用）
     if (committedMatched.route.ErrorBoundary) {
       content = <RouteErrorBoundary key={committedPath} fallback={committedMatched.route.ErrorBoundary}>{content}</RouteErrorBoundary>;
     }
@@ -488,9 +494,11 @@ export function Router({ routes, NotFound }: RouterProps) {
   }
 
   // layouts を外側から内側にネストして描画（ルートマッチ時のみ）
+  // 各 layout に ErrorBoundary がある場合はラップして、render エラーが親へバブルする構造にする
   if (committedMatched) {
     for (let i = committedMatched.route.layouts.length - 1; i >= 0; i--) {
-      const Layout = committedMatched.route.layouts[i].component;
+      const layout = committedMatched.route.layouts[i];
+      const Layout = layout.component;
       // 親 layout の loader data を LayoutDataContext で提供（最外側は undefined）
       const parentLayoutData = i > 0 ? layoutLoaderDatas[i - 1] : undefined;
       content = (
@@ -500,7 +508,16 @@ export function Router({ routes, NotFound }: RouterProps) {
           </LoaderDataContext.Provider>
         </LayoutDataContext.Provider>
       );
+      // layout の ErrorBoundary は layout の外側に配置（layout 自身のエラーは親でキャッチ）
+      if (layout.ErrorBoundary) {
+        content = <RouteErrorBoundary key={`${committedPath}-layout-${i}`} fallback={layout.ErrorBoundary}>{content}</RouteErrorBoundary>;
+      }
     }
+  }
+
+  // Router レベルの ErrorFallback（最外殻 — どの error.tsx にもキャッチされなかった render エラー用）
+  if (ErrorFallback) {
+    content = <RouteErrorBoundary key="router-fallback" fallback={ErrorFallback}>{content}</RouteErrorBoundary>;
   }
 
   return (
@@ -541,6 +558,20 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
     }
     return this.props.children;
   }
+}
+
+/**
+ * page → 内側 layout → 外側 layout の順で最も近い ErrorBoundary を探す。
+ * loader エラーのバブリングに使用。
+ */
+function findNearestErrorBoundary(route: Route): ComponentType<{ error: Error }> | undefined {
+  // まず page レベルの ErrorBoundary を確認
+  if (route.ErrorBoundary) return route.ErrorBoundary;
+  // layout を内側から外側へ走査
+  for (let i = route.layouts.length - 1; i >= 0; i--) {
+    if (route.layouts[i].ErrorBoundary) return route.layouts[i].ErrorBoundary;
+  }
+  return undefined;
 }
 
 function routeHasLoader(route: Route): boolean {
