@@ -1,0 +1,7 @@
+{
+  "name": "orbit-form",
+  "version": "0.0.1",
+  "description": "React Compiler compatible form library — designed for the AI era.",
+  "license": "MIT",
+  "keywords": ["react", "form", "react-compiler", "orbit"]
+}

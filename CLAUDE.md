@@ -1,15 +1,41 @@
-# CLAUDE.md — Orbit Router
+# CLAUDE.md — Orbit
+
+## 設計思想（実装時に常に意識すること）
+
+詳細は `docs/philosophy.md` を参照。以下は判断に迷ったとき立ち返る原則。
+
+### AI が書いて、人間が読む
+
+- **読みやすさ > 書きやすさ**。短さのために処理を隠さない
+- **コードを自然言語に翻訳できるか？** — これが読みやすさの判定基準
+- **正しい書き方は1つ** — API の自由度を絞り、AI の出力を収束させる
+- **理解負債をゼロに** — AI がどれだけ書いても、人間がその場で理解できる状態を保つ
+
+### 実装の判断基準
+
+- **隠すな、揃えろ** — Rails 的な「短いけど裏で何が起きてるかわからない」を避ける。Hono 的な「展開済みで明示的」を目指す
+- **規約は道標であって壁ではない** — デフォルトはシンプルで読みやすく。逸れることは禁止しない
+- **React Compiler 互換** — `useSyncExternalStore`、Proxy 不使用、クラスインスタンス不使用、hooks 戻り値の不変性
+- **YAGNI** — 必要になるまで作らない
 
 ## プロジェクト概要
 
-Orbit Router は Vite+ 上に構築するディレクトリベースの React ルーター。
-Vite プラグインとして提供し、`routes/` にファイルを置くだけでルートが自動生成される。
+Orbit は React のためのフロントエンドツールキット。
+ルーティング・データ取得・フォームを、一貫した規約と型安全で統合する。
+
+ターゲット：AI と一緒に開発する個人開発者・小規模チーム。
+
+| パッケージ | 説明 | 状態 |
+|-----------|------|------|
+| `orbit-router` | ディレクトリベースルーター | v0.1.16 |
+| `orbit-query` | データ取得 + キャッシュ | 名前確保済み、設計完了 |
+| `orbit-form` | React Compiler 互換フォーム | 名前確保済み、計画中 |
 
 ## リポジトリ構成
 
 ```
-orbit-router/                     Vite+ monorepo (pnpm workspace)
-├── packages/orbit-router/        Vite プラグイン本体（npm パッケージ）
+orbit/                            Vite+ monorepo (pnpm workspace)
+├── packages/orbit-router/        Vite プラグイン + ランタイム（npm パッケージ）
 │   └── src/
 │       ├── index.ts              エクスポート口
 │       ├── plugin.ts             Vite プラグイン（仮想モジュール生成）
@@ -20,12 +46,16 @@ orbit-router/                     Vite+ monorepo (pnpm workspace)
 │           ├── link.tsx          <Link> コンポーネント（SPA ナビゲーション）
 │           ├── match.ts          ルートマッチング（動的パラメータ対応）
 │           └── hooks.ts          useParams() 等の hooks
+├── packages/orbit-query/         データ取得 + キャッシュ（実装準備中）
+├── packages/orbit-form/          フォームライブラリ（計画中）
 ├── apps/website/                 playground（動作確認用アプリ）
 │   ├── vite.config.ts            orbitRouter() + react プラグイン
 │   └── src/
 │       ├── main.tsx → app.tsx    React エントリ
-│       └── routes/               ルーティング対象（/, /about, /users, /users/:id）
+│       └── routes/               ルーティング対象
 └── docs/
+    ├── philosophy.md             設計思想
+    ├── orbit-query-design.md     orbit-query 設計ドキュメント
     ├── requirements.md           要件定義
     └── tickets.md                チケット一覧
 ```
@@ -53,60 +83,36 @@ cd packages/orbit-router && pnpm run test
 
 - **ツールチェーン**: Vite+ v0.1.12（alpha）— Rolldown, Oxlint, Oxfmt, Vitest
 - **UI**: React 19
-- **バリデーション**: Zod（Phase 2 で導入予定）
+- **バリデーション**: Zod
 - **パッケージマネージャ**: pnpm（Vite+ monorepo テンプレート由来）
 - **ビルド**: tsdown（`vp pack` 経由）
 
-## 現在の状態
+## ロードマップ
 
-Phase 1（CSR-only の最小ルーター）がほぼ完了。
+- [x] **Phase 1** — orbit-router（CSR ルーター）
+- [ ] **Phase 2** — orbit-query 実装
+- [ ] **Phase 3** — orbit-router 型安全化（typed params, typed links, typed search params）
+- [ ] **Phase 4** — orbit-form 実装
 
-**完了（P1-01〜P1-12）:**
-- Vite プラグインの骨格（`orbitRouter()` 関数）
-- ディレクトリスキャナ（`routes/` → ルート一覧）
-- 仮想モジュール（`virtual:orbit-router/routes`）
-- HMR 対応（routes/ 変更で自動リロード）
-- playground セットアップ
-- `<Router>` コンポーネント（URL 状態管理 + ルートマッチング描画）
-- `<Link>` コンポーネント（`history.pushState` による SPA ナビゲーション）
-- `popstate` 対応（戻る/進むボタン）
-- 動的ルートマッチング（`/users/:id` → `{ id: "123" }` 抽出）
-- `useParams()` hook
-- ネストレイアウト（親ディレクトリの layout.tsx を自動収集・ネスト描画）
-
-**次にやること:**
-- P1-13: playground での動作確認・デモ拡充
-- P1-14: テスト整備（scanner / match / Router / Link）
-
-→ 詳細は `docs/tickets.md` を参照。
-
-## 設計の要点
-
-### Vite プラグインの仕組み
-
-1. `scanner.ts` が `routes/` を走査してルート一覧（パス + ファイルパス）を作る
-2. `plugin.ts` がそれを JavaScript コード（import 文 + routes 配列）に変換
-3. `virtual:orbit-router/routes` という仮想モジュールとして Vite に提供
-4. アプリ側で `import { routes } from "virtual:orbit-router/routes"` で利用
-
-### ディレクトリ規約
+## ディレクトリ規約
 
 ```
 routes/page.tsx              → /
-routes/layout.tsx             → ルートレイアウト
+routes/layout.tsx            → ルートレイアウト
 routes/about/page.tsx        → /about
 routes/users/[id]/page.tsx   → /users/:id
 ```
 
 - `page.tsx` = ページコンポーネント
 - `layout.tsx` = レイアウト（`{children}` で子を囲む）
+- `loader.ts` = データ取得
+- `action.ts` = フォーム送信処理
+- `guard.ts` = アクセス制御
+- `error.tsx` = エラー境界（親へ自動バブリング）
+- `loading.tsx` = ローディング状態
+- `not-found.tsx` = 404 ページ
 - `[param]` = 動的セグメント
 - `_` 始まりのディレクトリはスキップ
-
-### 将来の方針
-
-- SSR は Cloudflare Workers 限定（adapter 層を省略してスコープ縮小）
-- VoidZero の Void プラットフォームとの親和性を意識
 
 ## 既知の問題
 
@@ -116,7 +122,7 @@ routes/users/[id]/page.tsx   → /users/:id
 
 ## リリース時のルール
 
-- バージョンアップ（publish）したら必ず `packages/orbit-router/CHANGELOG.md` にパッチノートを記録する
+- バージョンアップ（publish）したら必ず各パッケージの `CHANGELOG.md` にパッチノートを記録する
 - 忘れずに同じコミットか直後のコミットで追加すること
 
 ## npm publish 手順

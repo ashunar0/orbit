@@ -1,0 +1,7 @@
+{
+  "name": "orbit-query",
+  "version": "0.0.1",
+  "description": "Data fetching and caching for React — designed for the AI era.",
+  "license": "MIT",
+  "keywords": ["react", "query", "cache", "data-fetching", "orbit"]
+}
