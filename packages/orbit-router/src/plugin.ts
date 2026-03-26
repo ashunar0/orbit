@@ -1,6 +1,7 @@
+import fs from "node:fs";
 import path from "node:path";
 import type { Plugin } from "vite";
-import { scanRoutes } from "./scanner";
+import { scanRoutes, type RouteEntry } from "./scanner";
 
 export interface OrbitRouterConfig {
   /** routes ディレクトリのパス（デフォルト: "src/routes"） */
@@ -28,6 +29,7 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
       async load(id) {
         if (id === RESOLVED_VIRTUAL_MODULE_ID) {
           const result = await scanRoutes(root, routesDir);
+          await writeRouteTypes(root, result.routes);
           return generateRouteModule(result);
         }
       },
@@ -36,8 +38,11 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
         // NOTE: layout.tsx の export 追加・削除（loader/guard）は import * as のライブバインディングで
         //       Fast Refresh 経由で反映されるため、virtual module の再生成は不要
         const routesPath = path.resolve(root, routesDir);
-        const onStructureChange = (file: string) => {
+        const onStructureChange = async (file: string) => {
           if (!file.startsWith(routesPath)) return;
+          // ルート構造変更時に型定義も再生成
+          const result = await scanRoutes(root, routesDir);
+          await writeRouteTypes(root, result.routes);
           const mod = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
           if (mod) {
             server.moduleGraph.invalidateModule(mod);
@@ -168,4 +173,78 @@ ${routeDefs.join(",\n")}
 ];
 ${notFoundExport}
 `;
+}
+
+/**
+ * ルートパスから動的パラメータ名を抽出する。
+ * 例: "/users/:id/posts/:postId" → ["id", "postId"]
+ */
+function extractParams(routePath: string): string[] {
+  const params: string[] = [];
+  for (const match of routePath.matchAll(/:(\w+)/g)) {
+    params.push(match[1]);
+  }
+  return params;
+}
+
+/**
+ * ルート情報から TypeScript 型定義を生成し、.orbit/route-types.d.ts に書き出す。
+ * アプリ側で型安全な useParams / Link / useNavigate を実現するための基盤。
+ */
+async function writeRouteTypes(root: string, routes: RouteEntry[]): Promise<void> {
+  const outDir = path.join(root, ".orbit");
+  await fs.promises.mkdir(outDir, { recursive: true });
+
+  const lines: string[] = [
+    "// このファイルは orbit-router が自動生成します。手動で編集しないでください。",
+    "",
+    'import "orbit-router";',
+    "",
+  ];
+
+  // RoutePaths — 全ルートパスのリテラルユニオン
+  const pathLiterals = routes.map((r) => `  | "${r.path}"`);
+  lines.push("export type RoutePaths =");
+  if (pathLiterals.length > 0) {
+    lines.push(pathLiterals.join("\n") + ";");
+  } else {
+    lines.push("  never;");
+  }
+  lines.push("");
+
+  // RouteParams — ルートパスごとの params マッピング
+  lines.push("export interface RouteParams {");
+  for (const route of routes) {
+    const params = extractParams(route.path);
+    if (params.length > 0) {
+      const fields = params.map((p) => `${p}: string`).join("; ");
+      lines.push(`  "${route.path}": { ${fields} };`);
+    } else {
+      lines.push(`  "${route.path}": Record<string, never>;`);
+    }
+  }
+  lines.push("}")
+  lines.push("");
+
+  // orbit-router モジュールの型を拡張
+  lines.push('declare module "orbit-router" {');
+  lines.push("  interface Register {");
+  lines.push("    routePaths: RoutePaths;");
+  lines.push("    routeParams: RouteParams;");
+  lines.push("  }");
+  lines.push("}");
+  lines.push("");
+
+  const content = lines.join("\n");
+  const filePath = path.join(outDir, "route-types.d.ts");
+
+  // 内容が同じなら書き込みスキップ（不要な HMR を防ぐ）
+  try {
+    const existing = await fs.promises.readFile(filePath, "utf-8");
+    if (existing === content) return;
+  } catch {
+    // ファイルが存在しない場合は書き込む
+  }
+
+  await fs.promises.writeFile(filePath, content);
 }

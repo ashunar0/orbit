@@ -5,4 +5,4 @@ export { Link } from "./runtime/link";
 export { Form } from "./runtime/form";
 export { useParams, useLoaderData, useLayoutData, useActionData, useSubmit, useSearchParams, useNavigation, useNavigate } from "./runtime/hooks";
 export { redirect } from "./runtime/redirect";
-export type { LoaderArgs, ActionArgs } from "./types";
+export type { LoaderArgs, ActionArgs, Register, RegisteredRoutePaths, RegisteredRouteParams } from "./types";
