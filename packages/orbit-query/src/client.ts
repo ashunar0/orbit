@@ -14,7 +14,10 @@ interface CacheEntry {
   updatedAt: number
   subscribers: Set<() => void>
   abortController: AbortController | null
-  refetch: () => void
+  /** 現在の options を保持する ref。ensureFetch で更新される */
+  currentOptions: QueryOptions | null
+  /** 安定参照の refetch 関数。entry 作成時に1回だけ生成 */
+  refetchStable: () => void
 }
 
 const INITIAL_STATE: QueryState = {
@@ -26,7 +29,14 @@ const INITIAL_STATE: QueryState = {
 
 export function createQueryClient(): QueryClient {
   const cache = new Map<string, CacheEntry>()
+  const noop = () => {}
 
+  /** read-only: レンダリング中に安全に呼べる（Map を変更しない） */
+  function peekEntry(key: QueryKey): CacheEntry | undefined {
+    return cache.get(serializeKey(key))
+  }
+
+  /** get-or-create: subscribe / ensureFetch 等の副作用コンテキストでのみ使う */
   function getEntry(key: QueryKey): CacheEntry {
     const hash = serializeKey(key)
     let entry = cache.get(hash)
@@ -36,9 +46,16 @@ export function createQueryClient(): QueryClient {
         updatedAt: 0,
         subscribers: new Set(),
         abortController: null,
-        refetch: () => {
-          // 初期状態では noop、fetchQuery 後に上書きされる
-        },
+        currentOptions: null,
+        // placeholder — 下で上書き
+        refetchStable: noop,
+      }
+      // entry を closure でキャプチャして安定参照を作る
+      const stableEntry = entry
+      entry.refetchStable = () => {
+        if (stableEntry.currentOptions) {
+          executeFetch(stableEntry.currentOptions).catch(() => {})
+        }
       }
       cache.set(hash, entry)
     }
@@ -121,7 +138,7 @@ export function createQueryClient(): QueryClient {
           entry.updatedAt = 0
           // subscriber がいる（= マウント中の useQuery がある）場合のみリフェッチ
           if (entry.subscribers.size > 0) {
-            entry.refetch()
+            entry.refetchStable()
           }
         }
       }
@@ -151,10 +168,9 @@ export function createQueryClient(): QueryClient {
       }
     },
 
+    // pure: レンダリング中に呼ばれるため Map を変更しない
     getSnapshot<T>(key: QueryKey): QueryState<T> {
-      const entry = cache.get(serializeKey(key))
-      if (!entry) return INITIAL_STATE as QueryState<T>
-      return entry.state as QueryState<T>
+      return (peekEntry(key)?.state ?? INITIAL_STATE) as QueryState<T>
     },
 
     ensureFetch<T>(options: QueryOptions<T>) {
@@ -163,11 +179,8 @@ export function createQueryClient(): QueryClient {
       const isStale = Date.now() - entry.updatedAt >= staleTime
       const isIdle = entry.state.status === "idle"
 
-      // refetch 関数を登録（invalidate 時に呼ばれる）
-      entry.refetch = () => {
-        // エラーは state に反映済みなので rejection は握りつぶす
-        executeFetch(options).catch(() => {})
-      }
+      // Fix #5: options を ref 的に保持。refetchStable が常に最新の options を使う
+      entry.currentOptions = options
 
       if (isIdle || (isStale && !entry.state.isFetching)) {
         // fire-and-forget: エラーは state 経由で通知
@@ -175,9 +188,9 @@ export function createQueryClient(): QueryClient {
       }
     },
 
+    // pure: レンダリング中に呼ばれるため Map を変更しない
     getRefetch(key: QueryKey): () => void {
-      const entry = getEntry(key)
-      return () => entry.refetch()
+      return peekEntry(key)?.refetchStable ?? noop
     },
   }
 

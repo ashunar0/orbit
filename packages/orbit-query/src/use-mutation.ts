@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useQueryClient } from "./provider"
 import type { MutationOptions } from "./types"
 
@@ -7,20 +7,26 @@ export function useMutation<TInput, TOutput>(options: MutationOptions<TInput, TO
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
+  // Fix #4: options を ref で保持し、mutate の deps を安定化
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+
   const mutate = useCallback(
     async (input: TInput): Promise<TOutput> => {
+      const { fn, invalidate, onSuccess } = optionsRef.current
+
       setIsSubmitting(true)
       setError(null)
 
       try {
-        const data = await options.fn(input)
+        const data = await fn(input)
 
-        if (options.onSuccess) {
-          options.onSuccess(data)
+        if (onSuccess) {
+          onSuccess(data)
         }
 
-        if (options.invalidate) {
-          client.invalidate(options.invalidate)
+        if (invalidate) {
+          client.invalidate(invalidate)
         }
 
         return data
@@ -32,7 +38,7 @@ export function useMutation<TInput, TOutput>(options: MutationOptions<TInput, TO
         setIsSubmitting(false)
       }
     },
-    [client, options.fn, options.invalidate, options.onSuccess],
+    [client],
   )
 
   return { mutate, isSubmitting, error }
