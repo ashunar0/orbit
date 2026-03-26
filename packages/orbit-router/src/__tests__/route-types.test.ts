@@ -66,4 +66,9 @@ describe("generateRouteTypesContent", () => {
 
     expect(content).toContain("export type RoutePaths =\n  never;")
   })
+
+  it("throws on unsafe route path", () => {
+    const badRoute = makeRoute('"; import("evil")')
+    expect(() => generateRouteTypesContent([badRoute])).toThrow("Unsafe route path")
+  })
 })

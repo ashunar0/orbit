@@ -191,7 +191,15 @@ export function extractParams(routePath: string): string[] {
  * ルート情報から TypeScript 型定義の文字列を生成する。
  * テスト可能にするためファイル書き込みと分離。
  */
+const SAFE_PATH = /^[/a-zA-Z0-9_:.-]+$/;
+
 export function generateRouteTypesContent(routes: RouteEntry[]): string {
+  for (const route of routes) {
+    if (!SAFE_PATH.test(route.path)) {
+      throw new Error(`Unsafe route path detected: ${route.path}`);
+    }
+  }
+
   const lines: string[] = [
     "// このファイルは orbit-router が自動生成します。手動で編集しないでください。",
     "",

@@ -26,11 +26,9 @@ type ResolvePathParams<T extends string> =
       : T;
 
 /** Link / useNavigate で使える href 型。動的パラメータは埋め込み済みの文字列を受け付ける */
-export type ValidHref = RegisteredRoutePaths extends string
-  ? RegisteredRoutePaths extends never
-    ? string
-    : ResolvePathParams<RegisteredRoutePaths>
-  : string;
+export type ValidHref = [RegisteredRoutePaths] extends [never]
+  ? string
+  : ResolvePathParams<RegisteredRoutePaths>;
 
 /**
  * loader の引数型。
