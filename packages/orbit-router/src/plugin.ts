@@ -179,7 +179,7 @@ ${notFoundExport}
  * ルートパスから動的パラメータ名を抽出する。
  * 例: "/users/:id/posts/:postId" → ["id", "postId"]
  */
-function extractParams(routePath: string): string[] {
+export function extractParams(routePath: string): string[] {
   const params: string[] = [];
   for (const match of routePath.matchAll(/:(\w+)/g)) {
     params.push(match[1]);
@@ -188,13 +188,10 @@ function extractParams(routePath: string): string[] {
 }
 
 /**
- * ルート情報から TypeScript 型定義を生成し、.orbit/route-types.d.ts に書き出す。
- * アプリ側で型安全な useParams / Link / useNavigate を実現するための基盤。
+ * ルート情報から TypeScript 型定義の文字列を生成する。
+ * テスト可能にするためファイル書き込みと分離。
  */
-async function writeRouteTypes(root: string, routes: RouteEntry[]): Promise<void> {
-  const outDir = path.join(root, ".orbit");
-  await fs.promises.mkdir(outDir, { recursive: true });
-
+export function generateRouteTypesContent(routes: RouteEntry[]): string {
   const lines: string[] = [
     "// このファイルは orbit-router が自動生成します。手動で編集しないでください。",
     "",
@@ -235,7 +232,17 @@ async function writeRouteTypes(root: string, routes: RouteEntry[]): Promise<void
   lines.push("}");
   lines.push("");
 
-  const content = lines.join("\n");
+  return lines.join("\n");
+}
+
+/**
+ * ルート情報から TypeScript 型定義を生成し、.orbit/route-types.d.ts に書き出す。
+ */
+async function writeRouteTypes(root: string, routes: RouteEntry[]): Promise<void> {
+  const outDir = path.join(root, ".orbit");
+  await fs.promises.mkdir(outDir, { recursive: true });
+
+  const content = generateRouteTypesContent(routes);
   const filePath = path.join(outDir, "route-types.d.ts");
 
   // 内容が同じなら書き込みスキップ（不要な HMR を防ぐ）

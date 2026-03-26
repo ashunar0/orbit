@@ -3,7 +3,7 @@ import { useQuery } from "orbit-query"
 import { postQuery } from "../queries"
 
 export default function PostDetail() {
-  const { id } = useParams()
+  const { id } = useParams<"/posts/:id">()
   const { data: post, isLoading, error } = useQuery(postQuery(id))
 
   if (isLoading) return <p>Loading...</p>

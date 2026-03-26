@@ -25,6 +25,9 @@ Directory-based React router built on Vite. Drop files into `routes/` and get ro
 - **Search params** — `useSearchParams()` with optional Zod validation
 - **Navigation state** — `useNavigation()` for progress indicators
 - **Type helpers** — `LoaderArgs` / `ActionArgs<TData>` for clean type annotations
+- **Type-safe params** — `useParams<"/users/:id">()` returns `{ id: string }` with auto-generated route types
+- **Type-safe links** — `<Link href="/typo">` is a type error; only valid routes are accepted
+- **Type-safe navigation** — `useNavigate()` also constrained to valid routes
 
 ## Quick Start
 
