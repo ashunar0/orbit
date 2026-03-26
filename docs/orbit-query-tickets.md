@@ -19,4 +19,4 @@
 - [x] **OQ-04**: `useQuery` — `useSyncExternalStore` でキャッシュ同期、`useEffect` で fetch 発火、staleTime / refetchInterval / enabled 対応
 - [x] **OQ-05**: `useMutation` — mutate / isSubmitting / error、invalidate キーで自動再フェッチ、onSuccess コールバック
 - [x] **OQ-06**: テスト整備 — createQueryClient / useQuery / useMutation のユニット・結合テスト（全23テスト pass）
-- [ ] **OQ-07**: playground 動作確認 — `apps/website` に orbit-query デモ追加、orbit-router の loader と連携
+- [x] **OQ-07**: playground 動作確認 — `apps/website` に orbit-query デモ追加（/posts ルート、useQuery + useMutation + invalidate 動作確認済み）

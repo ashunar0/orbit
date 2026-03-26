@@ -6,6 +6,8 @@ export default function Home() {
       <h1>Home</h1>
       <p>Welcome to Orbit Router!</p>
       <Link href="/about">About</Link>
+      {" | "}
+      <Link href="/posts">Posts (orbit-query demo)</Link>
     </div>
   );
 }

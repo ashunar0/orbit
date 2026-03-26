@@ -30,6 +30,9 @@ importers:
 
   apps/website:
     dependencies:
+      orbit-query:
+        specifier: workspace:*
+        version: link:../../packages/orbit-query
       orbit-router:
         specifier: workspace:*
         version: link:../../packages/orbit-router
