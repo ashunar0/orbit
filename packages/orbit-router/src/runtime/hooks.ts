@@ -1,7 +1,19 @@
 import { useRouterStateContext, useRouterDispatchContext, useLoaderDataContext, useLayoutDataContext, type NavigationState } from "./router";
+import type { RegisteredRoutePaths, RegisteredRouteParams, ValidHref } from "../types";
 
-export function useParams(): Record<string, string> {
-  return useRouterStateContext().params;
+/**
+ * 現在のルートのパラメータを取得する。
+ * ルートパスを型引数に渡すと、そのルートの params が型安全に返る。
+ *
+ * @example
+ * // 型安全（推奨）
+ * const { id } = useParams<"/users/:id">()
+ *
+ * // 従来互換
+ * const params = useParams()
+ */
+export function useParams<T extends RegisteredRoutePaths = never>(): [T] extends [never] ? Record<string, string> : RegisteredRouteParams[T & keyof RegisteredRouteParams] {
+  return useRouterStateContext().params as never;
 }
 
 /**
@@ -97,6 +109,6 @@ export function useNavigation(): { state: NavigationState } {
  * navigate("/login", { replace: true })
  * navigate(-1) // history.back() と同等
  */
-export function useNavigate(): (to: string | number, options?: { replace?: boolean }) => void {
+export function useNavigate(): (to: ValidHref | number, options?: { replace?: boolean }) => void {
   return useRouterDispatchContext().navigate;
 }

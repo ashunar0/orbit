@@ -1,8 +1,9 @@
 import type { AnchorHTMLAttributes, MouseEvent } from "react";
 import { useRouterDispatchContext } from "./router";
+import type { ValidHref } from "../types";
 
 interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
-  href: string;
+  href: ValidHref;
   /** false を渡すと hover 時の prefetch を無効化する */
   prefetch?: boolean;
 }
