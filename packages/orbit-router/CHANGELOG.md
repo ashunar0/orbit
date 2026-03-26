@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.17 (2026-03-26)
+
+### Features
+
+- ルート型定義の自動生成 — Vite プラグインが `.orbit/route-types.d.ts` をプロジェクトに書き出す
+- `useParams<"/users/:id">()` — ルートパスを型引数に渡すと `{ id: string }` が推論される
+- `<Link href>` の型安全化 — 有効なルートパスのみ受け付ける（`"/typo"` は型エラー）
+- `useNavigate()` の型安全化 — 同上
+- `LoaderArgs<"/users/:id">` / `ActionArgs` — params がルートごとに型付き
+- 型引数は全てオプショナル — 省略時は従来の `string` / `Record<string, string>` にフォールバック
+
+### Bug Fixes
+
+- 型生成時のルートパスインジェクション防止（安全な文字のみ許可）
+
 ## 0.1.16 (2026-03-24)
 
 ### Bug Fixes

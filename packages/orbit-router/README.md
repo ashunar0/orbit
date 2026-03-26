@@ -103,8 +103,11 @@ import {
   useNavigate,
 } from "orbit-router"
 
-// Route params
-const { id } = useParams()
+// Route params (type-safe with route path generic)
+const { id } = useParams<"/users/:id">()
+
+// Route params (untyped fallback)
+const params = useParams()
 
 // Loader data (type-safe with typeof import)
 import type { loader } from "./loader"
@@ -173,7 +176,13 @@ export async function guard({ params, signal }: LoaderArgs) {
   return true
 }
 
-// routes/users/loader.ts
+// routes/users/[id]/loader.ts — type-safe params
+export async function loader({ params, signal }: LoaderArgs<"/users/:id">) {
+  const user = await getUser(params.id, { signal }) // params.id: string
+  return { user }
+}
+
+// routes/users/loader.ts — untyped fallback
 export async function loader({ params, search, signal }: LoaderArgs) {
   const res = await fetch(`/api/users?page=${search.page ?? "1"}`, { signal })
   return res.json()
@@ -262,6 +271,37 @@ export async function loader({ params }: LoaderArgs) {
   return { user: session.user }
 }
 ```
+
+## Type Safety
+
+Orbit Router auto-generates route type definitions when the dev server starts. A `.orbit/route-types.d.ts` file is written to your project root, providing type-safe params, links, and navigation.
+
+Add `.orbit` to your `tsconfig.json`:
+
+```json
+{
+  "include": ["src", ".orbit"]
+}
+```
+
+Then use type-safe APIs:
+
+```ts
+// Type-safe useParams — typos become type errors
+const { id } = useParams<"/users/:id">()
+
+// Type-safe Link — only valid routes accepted
+<Link href="/users/123">User</Link>  // ✓
+<Link href="/typo">Oops</Link>       // ✗ type error
+
+// Type-safe LoaderArgs
+export const loader = async ({ params }: LoaderArgs<"/users/:id">) => {
+  params.id    // ✓ string
+  params.typo  // ✗ type error
+}
+```
+
+All type parameters are optional — omit them for the traditional untyped behavior.
 
 ## Architecture
 
