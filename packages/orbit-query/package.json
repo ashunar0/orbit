@@ -3,5 +3,57 @@
   "version": "0.0.1",
   "description": "Data fetching and caching for React — designed for the AI era.",
   "license": "MIT",
-  "keywords": ["react", "query", "cache", "data-fetching", "orbit"]
+  "author": "ashunar0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ashunar0/orbit",
+    "directory": "packages/orbit-query"
+  },
+  "keywords": [
+    "react",
+    "query",
+    "cache",
+    "data-fetching",
+    "orbit",
+    "react-compiler"
+  ],
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "typecheck": "tsc --noEmit",
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@testing-library/react": "catalog:",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "bumpp": "^11.0.1",
+    "happy-dom": "catalog:",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.9.3",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
+  },
+  "dependencies": {}
 }
