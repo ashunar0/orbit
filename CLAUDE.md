@@ -27,9 +27,9 @@ Orbit は React のためのフロントエンドツールキット。
 
 | パッケージ | 説明 | 状態 |
 |-----------|------|------|
-| `orbit-router` | ディレクトリベースルーター | v0.1.17 |
+| `orbit-router` | ディレクトリベースルーター | v0.1.18 |
 | `orbit-query` | データ取得 + キャッシュ | v0.1.0 |
-| `orbit-form` | React Compiler 互換フォーム | 名前確保済み、計画中 |
+| `orbit-form` | React Compiler 互換フォーム | v0.1.0 |
 
 ## リポジトリ構成
 
@@ -92,9 +92,9 @@ cd packages/orbit-router && pnpm run test
 ## ロードマップ
 
 - [x] **Phase 1** — orbit-router（CSR ルーター）
-- [ ] **Phase 2** — orbit-query 実装
-- [ ] **Phase 3** — orbit-router 型安全化（typed params, typed links, typed search params）
-- [ ] **Phase 4** — orbit-form 実装
+- [x] **Phase 2** — orbit-query 実装
+- [x] **Phase 3** — orbit-router 型安全化（typed params, typed links, typed search params）
+- [x] **Phase 4** — orbit-form 実装
 
 ## ディレクトリ規約
 
