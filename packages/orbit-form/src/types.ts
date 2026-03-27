@@ -14,15 +14,15 @@ export interface FormState<T> {
   isSubmitting: boolean
 }
 
-export type DependencyCallback<T> = (
-  value: unknown,
-  form: { reset: (name: keyof T) => void; setValue: (name: keyof T, value: unknown) => void },
+export type DependencyCallback<T, K extends keyof T = keyof T> = (
+  value: T[K],
+  form: { reset: (name: keyof T) => void; setValue: <N extends keyof T>(name: N, value: T[N]) => void },
 ) => void
 
 export interface FormStoreOptions<TInput, TOutput> {
   schema: ZodType<TOutput, ZodTypeDef, TInput>
   defaultValues: TInput
-  dependencies?: { [K in keyof TInput]?: DependencyCallback<TInput> }
+  dependencies?: { [K in keyof TInput]?: DependencyCallback<TInput, K> }
 }
 
 export interface FormStore<TInput, TOutput> {

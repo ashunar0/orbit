@@ -6,11 +6,12 @@ import type { DependencyCallback, FormStore } from "./types"
 export interface UseFormOptions<TInput extends Record<string, unknown>, TOutput> {
   schema: ZodType<TOutput, ZodTypeDef, TInput>
   defaultValues: TInput | undefined
-  dependencies?: { [K in keyof TInput]?: DependencyCallback<TInput> }
+  dependencies?: { [K in keyof TInput]?: DependencyCallback<TInput, K> }
 }
 
 export interface UseFormReturn<TInput extends Record<string, unknown>, TOutput> {
-  store: FormStore<TInput, TOutput>
+  /** defaultValues が undefined の間は null（非同期データ待ち） */
+  store: FormStore<TInput, TOutput> | null
   values: TInput
   errors: { [K in keyof TInput]?: string } & { _root?: string }
   isDirty: boolean
@@ -58,12 +59,9 @@ export function useForm<TInput extends Record<string, unknown>, TOutput>(
     () => store?.getSnapshot() ?? EMPTY_STATE as ReturnType<NonNullable<typeof store>["getSnapshot"]>,
   )
 
-  // submit ハンドラ — 安定参照
-  const onSubmitRef = useRef<((data: TOutput) => void | Promise<void>) | null>(null)
-
+  // submit: onSubmit をクロージャでキャプチャ（レンダリング中の副作用なし）
   const submit = useMemo(() => {
     return (onSubmit: (data: TOutput) => void | Promise<void>) => {
-      onSubmitRef.current = onSubmit
       return (e?: React.FormEvent) => {
         e?.preventDefault()
         if (!store) return
@@ -72,7 +70,7 @@ export function useForm<TInput extends Record<string, unknown>, TOutput>(
         if (data === null) return
 
         store.setSubmitting(true)
-        const result = onSubmitRef.current?.(data)
+        const result = onSubmit(data)
         if (result instanceof Promise) {
           result.finally(() => store.setSubmitting(false))
         } else {
@@ -89,7 +87,7 @@ export function useForm<TInput extends Record<string, unknown>, TOutput>(
   }, [store])
 
   return {
-    store: store!,
+    store,
     values: snapshot.values,
     errors: snapshot.errors,
     isDirty: snapshot.isDirty,

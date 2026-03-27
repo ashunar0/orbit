@@ -315,6 +315,61 @@ describe("createFormStore", () => {
       store.setValue("percentMode", false)
       expect(store.getFieldValue("displayUnit")).toBe("件")
     })
+
+    it("dependency reset clears stale error on touched target field", () => {
+      const store = createFormStore({
+        schema: z.object({
+          category: z.string(),
+          subcategory: z.string().min(1, "必須です"),
+        }),
+        defaultValues: { category: "food", subcategory: "" },
+        dependencies: {
+          category: (_value, form) => {
+            form.reset("subcategory")
+          },
+        },
+      })
+
+      // subcategory を touch してバリデーションエラーを出す
+      store.setTouched("subcategory")
+      store.validateField("subcategory")
+      expect(store.getFieldError("subcategory")).toBe("必須です")
+
+      // subcategory に値を入れてエラー解消
+      store.setValue("subcategory", "ramen")
+      expect(store.getFieldError("subcategory")).toBeUndefined()
+
+      // category を変更 → subcategory がリセット（空文字に戻る）
+      // touched なのでエラーが再表示されるべき
+      store.setValue("category", "drink")
+      expect(store.getFieldValue("subcategory")).toBe("")
+      expect(store.getFieldError("subcategory")).toBe("必須です")
+    })
+
+    it("dependency setValue clears error when new value is valid", () => {
+      const store = createFormStore({
+        schema: z.object({
+          percentMode: z.boolean(),
+          displayUnit: z.string().min(1, "必須です"),
+        }),
+        defaultValues: { percentMode: false, displayUnit: "" },
+        dependencies: {
+          percentMode: (value, form) => {
+            form.setValue("displayUnit", value ? "%" : "件")
+          },
+        },
+      })
+
+      // displayUnit を touch してエラーを出す
+      store.setTouched("displayUnit")
+      store.validateField("displayUnit")
+      expect(store.getFieldError("displayUnit")).toBe("必須です")
+
+      // percentMode を変更 → displayUnit が "%" にセットされエラー解消
+      store.setValue("percentMode", true)
+      expect(store.getFieldValue("displayUnit")).toBe("%")
+      expect(store.getFieldError("displayUnit")).toBeUndefined()
+    })
   })
 
   describe("isSubmitting", () => {

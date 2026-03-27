@@ -1,7 +1,7 @@
 export { createFormStore } from "./store"
 export { useForm } from "./use-form"
 export { useField } from "./use-field"
-export { Form, Field } from "./components"
+export { Form, Field, useFormStore } from "./components"
 
 export type {
   FormStore,

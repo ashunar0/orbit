@@ -104,16 +104,21 @@ export function createFormStore<TInput extends Record<string, unknown>, TOutput>
   // --- dependencies 実行 ---
   function runDependency(name: keyof TInput) {
     if (!dependencies) return
-    const dep = dependencies[name] as DependencyCallback<TInput> | undefined
+    const dep = dependencies[name] as DependencyCallback<TInput, typeof name> | undefined
     if (!dep) return
 
     dep(values[name], {
       reset: (targetName) => {
         values[targetName] = defaultValues[targetName]
+        delete errors[targetName]
         isDirty = checkDirty()
         invalidateFieldSnapshot(targetName)
         notifyField(targetName)
         notifyGlobal()
+        // touched なフィールドは再バリデーション
+        if (touched[targetName as string]) {
+          runFieldValidation(targetName)
+        }
       },
       setValue: (targetName, value) => {
         values[targetName] = value as TInput[typeof targetName]
@@ -121,6 +126,10 @@ export function createFormStore<TInput extends Record<string, unknown>, TOutput>
         invalidateFieldSnapshot(targetName)
         notifyField(targetName)
         notifyGlobal()
+        // touched なフィールドは再バリデーション
+        if (touched[targetName as string]) {
+          runFieldValidation(targetName)
+        }
       },
     })
   }

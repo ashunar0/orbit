@@ -1,6 +1,6 @@
 import { Link } from "orbit-router"
 import { useQuery, useMutation } from "orbit-query"
-import { useForm, useField } from "orbit-form"
+import { useForm, useField, Form, Field } from "orbit-form"
 import { createPost } from "./api"
 import { postsQuery } from "./queries"
 import { postSchema, type PostInput } from "./schema"
@@ -41,17 +41,35 @@ export default function Posts() {
       </ul>
 
       <h2>New Post</h2>
-      <form onSubmit={form.submit(handleSubmit)}>
+      <Form form={form} onSubmit={handleSubmit}>
         <div>
-          <TitleField form={form} />
+          <Field<PostInput, { title: string; body: string }, "title"> name="title">
+            {(field) => (
+              <>
+                <input placeholder="Title" {...field.props} />
+                {field.touched && field.error && (
+                  <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
+                )}
+              </>
+            )}
+          </Field>
         </div>
         <div>
-          <BodyField form={form} />
+          <Field<PostInput, { title: string; body: string }, "body"> name="body">
+            {(field) => (
+              <textarea
+                placeholder="Body"
+                value={field.value}
+                onChange={(e) => field.setValue(e.target.value)}
+                onBlur={field.setTouched}
+              />
+            )}
+          </Field>
         </div>
         <button type="submit" disabled={form.isSubmitting}>
           {form.isSubmitting ? "Posting..." : "Create Post"}
         </button>
-      </form>
+      </Form>
 
       <p>
         <button onClick={refetch}>Refetch</button>
@@ -60,30 +78,5 @@ export default function Posts() {
         <Link href="/">← Home</Link>
       </p>
     </div>
-  )
-}
-
-// フィールドコンポーネント — useField でフィールド単位の購読
-function TitleField({ form }: { form: ReturnType<typeof useForm<PostInput, { title: string; body: string }>> }) {
-  const field = useField(form.store, "title")
-  return (
-    <>
-      <input placeholder="Title" {...field.props} />
-      {field.touched && field.error && (
-        <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
-      )}
-    </>
-  )
-}
-
-function BodyField({ form }: { form: ReturnType<typeof useForm<PostInput, { title: string; body: string }>> }) {
-  const field = useField(form.store, "body")
-  return (
-    <textarea
-      placeholder="Body"
-      value={field.value}
-      onChange={(e) => field.setValue(e.target.value)}
-      onBlur={field.setTouched}
-    />
   )
 }
