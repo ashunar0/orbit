@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.18 (2026-03-27)
+
+### Features
+
+- `useSearchParams()` が `[search, setSearch]` タプルを返すように変更
+- `setSearch({ key: value })` で URL クエリパラメータをマージ更新
+- `setSearch({ key: null })` でパラメータを削除
+- `replace: true` オプションで `history.replaceState` を使用可能
+
+### Refactor
+
+- `setSearchParams` を dispatch context に移動し、`useNavigate` / `useSubmit` と同じ安定参照パターンに統一（React Compiler 互換）
+
+### Breaking Changes
+
+- `useSearchParams()` の戻り値が値から `[値, setter]` タプルに変更
+
 ## 0.1.17 (2026-03-26)
 
 ### Features
