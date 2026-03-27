@@ -56,6 +56,8 @@ orbit/                            Vite+ monorepo (pnpm workspace)
 └── docs/
     ├── philosophy.md             設計思想
     ├── orbit-query-design.md     orbit-query 設計ドキュメント
+    ├── orbit-form-design.md      orbit-form 設計ドキュメント
+    ├── file-conventions.md       ファイル規約（page/hooks/server/schema）
     ├── requirements.md           要件定義
     └── tickets.md                チケット一覧
 ```
