@@ -3,5 +3,58 @@
   "version": "0.0.1",
   "description": "React Compiler compatible form library — designed for the AI era.",
   "license": "MIT",
-  "keywords": ["react", "form", "react-compiler", "orbit"]
+  "author": "ashunar0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ashunar0/orbit",
+    "directory": "packages/orbit-form"
+  },
+  "keywords": [
+    "react",
+    "form",
+    "zod",
+    "react-compiler",
+    "orbit"
+  ],
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "typecheck": "tsc --noEmit",
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@testing-library/react": "catalog:",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "bumpp": "^11.0.1",
+    "happy-dom": "catalog:",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.9.3",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0",
+    "zod": ">=3.0.0"
+  },
+  "dependencies": {}
 }

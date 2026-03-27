@@ -1,26 +1,28 @@
-import { useState } from "react"
 import { Link } from "orbit-router"
 import { useQuery, useMutation } from "orbit-query"
+import { useForm, useField } from "orbit-form"
 import { createPost } from "./api"
 import { postsQuery } from "./queries"
+import { postSchema, type PostInput } from "./schema"
+
+const defaultValues: PostInput = { title: "", body: "" }
 
 export default function Posts() {
   const { data: posts, isLoading, error, refetch } = useQuery(postsQuery())
 
-  const { mutate, isSubmitting } = useMutation({
+  const { mutate } = useMutation({
     fn: ({ title, body }: { title: string; body: string }) => createPost(title, body),
     invalidate: ["posts"],
   })
 
-  const [title, setTitle] = useState("")
-  const [body, setBody] = useState("")
+  const form = useForm({
+    schema: postSchema,
+    defaultValues,
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title.trim()) return
-    await mutate({ title, body })
-    setTitle("")
-    setBody("")
+  const handleSubmit = async (data: { title: string; body: string }) => {
+    await mutate(data)
+    form.reset()
   }
 
   if (isLoading) return <p>Loading posts...</p>
@@ -39,23 +41,15 @@ export default function Posts() {
       </ul>
 
       <h2>New Post</h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={form.submit(handleSubmit)}>
         <div>
-          <input
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <TitleField form={form} />
         </div>
         <div>
-          <textarea
-            placeholder="Body"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
+          <BodyField form={form} />
         </div>
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Posting..." : "Create Post"}
+        <button type="submit" disabled={form.isSubmitting}>
+          {form.isSubmitting ? "Posting..." : "Create Post"}
         </button>
       </form>
 
@@ -66,5 +60,30 @@ export default function Posts() {
         <Link href="/">← Home</Link>
       </p>
     </div>
+  )
+}
+
+// フィールドコンポーネント — useField でフィールド単位の購読
+function TitleField({ form }: { form: ReturnType<typeof useForm<PostInput, { title: string; body: string }>> }) {
+  const field = useField(form.store, "title")
+  return (
+    <>
+      <input placeholder="Title" {...field.props} />
+      {field.touched && field.error && (
+        <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
+      )}
+    </>
+  )
+}
+
+function BodyField({ form }: { form: ReturnType<typeof useForm<PostInput, { title: string; body: string }>> }) {
+  const field = useField(form.store, "body")
+  return (
+    <textarea
+      placeholder="Body"
+      value={field.value}
+      onChange={(e) => field.setValue(e.target.value)}
+      onBlur={field.setTouched}
+    />
   )
 }

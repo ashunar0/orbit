@@ -9,8 +9,10 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "orbit-form": "workspace:*",
     "orbit-query": "workspace:*",
     "orbit-router": "workspace:*",
+    "zod": "catalog:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
