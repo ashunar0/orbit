@@ -125,9 +125,13 @@ const result = useActionData<typeof action>()
 const submit = useSubmit()
 await submit(new FormData(form))
 
-// Search params (raw or Zod-validated)
-const search = useSearchParams()
-const { page } = useSearchParams(myZodSchema)
+// Search params (raw or parsed)
+const [search, setSearch] = useSearchParams()
+const [{ page }, setSearch] = useSearchParams((raw) => ({
+  page: Number(raw.page ?? 1),
+}))
+setSearch({ page: 2 })       // merge into URL
+setSearch({ q: null })        // remove param
 
 // Navigation state ("idle" | "loading" | "submitting")
 const { state } = useNavigation()

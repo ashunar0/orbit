@@ -64,28 +64,58 @@ export function useSubmit(): (payload: FormData | Record<string, unknown>) => Pr
   return useRouterDispatchContext().submitAction;
 }
 
+/** search params の値として受け付ける型。null/undefined はそのキーを削除する */
+type SearchParamValue = string | number | boolean | null | undefined;
+
+/** search params を更新する関数。現在のパラメータにマージし、null/undefined のキーは削除する */
+type SetSearchParams = (
+  params: Record<string, SearchParamValue>,
+  options?: { replace?: boolean },
+) => void;
+
 /**
- * URL の search params を取得する。
+ * URL の search params を取得・更新する。
  * パース関数を渡すとバリデーション + 型変換ができる。
  *
  * @example
  * // パース関数なし — 生の文字列
- * const search = useSearchParams()  // Record<string, string>
+ * const [search, setSearch] = useSearchParams()
  *
  * // パース関数あり — 型付き（Zod, Valibot, 自前関数など何でも可）
- * const { page } = useSearchParams((raw) => ({
+ * const [{ page }, setSearch] = useSearchParams((raw) => ({
  *   page: Number(raw.page ?? 1),
  * }))
+ * setSearch({ page: 2 })  // ?page=2 に更新（他のパラメータは維持）
  *
  * // Zod を使う場合
- * const { page } = useSearchParams((raw) => searchSchema.parse(raw))
+ * const [search, setSearch] = useSearchParams((raw) => searchSchema.parse(raw))
+ *
+ * // パラメータの削除
+ * setSearch({ q: null })  // ?q を削除
  */
-export function useSearchParams(): Record<string, string>;
-export function useSearchParams<T>(parse: (raw: Record<string, string>) => T): T;
-export function useSearchParams<T>(parse?: (raw: Record<string, string>) => T): Record<string, string> | T {
-  const raw = useRouterStateContext().search;
-  if (!parse) return raw;
-  return parse(raw);
+export function useSearchParams(): [Record<string, string>, SetSearchParams];
+export function useSearchParams<T>(parse: (raw: Record<string, string>) => T): [T, SetSearchParams];
+export function useSearchParams<T>(parse?: (raw: Record<string, string>) => T): [Record<string, string> | T, SetSearchParams] {
+  const { search, currentPath } = useRouterStateContext();
+  const { navigate } = useRouterDispatchContext();
+
+  const parsed = parse ? parse(search) : search;
+
+  const setSearchParams: SetSearchParams = (params, options) => {
+    const merged = { ...search };
+    for (const [key, value] of Object.entries(params)) {
+      if (value == null) {
+        delete merged[key];
+      } else {
+        merged[key] = String(value);
+      }
+    }
+    const qs = new URLSearchParams(merged).toString();
+    const url = qs ? `${currentPath}?${qs}` : currentPath;
+    navigate(url, options);
+  };
+
+  return [parsed, setSearchParams];
 }
 
 /**

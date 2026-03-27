@@ -23,12 +23,12 @@ function NoLoaderPage() {
 }
 
 function SearchPage() {
-  const raw = useSearchParams();
+  const [raw] = useSearchParams();
   return <div>Query: {raw.q ?? "none"}</div>;
 }
 
 function SearchSchemaPage() {
-  const { page } = useSearchParams((raw) => ({
+  const [{ page }] = useSearchParams((raw) => ({
     page: Number(raw.page ?? 1),
   }));
   return <div>Page: {page}</div>;
@@ -250,6 +250,27 @@ describe("Loader", () => {
   });
 });
 
+function SetSearchPage() {
+  const [raw, setSearch] = useSearchParams();
+  return (
+    <div>
+      <div>Query: {raw.q ?? "none"}</div>
+      <div>Sort: {raw.sort ?? "none"}</div>
+      <button onClick={() => setSearch({ q: "world" })}>Set Q</button>
+      <button onClick={() => setSearch({ q: null })}>Remove Q</button>
+      <button onClick={() => setSearch({ q: "updated", sort: "name" })}>Set Both</button>
+    </div>
+  );
+}
+
+const setSearchRoutes = [
+  {
+    path: "/set-search",
+    component: SetSearchPage,
+    layouts: [], guards: [],
+  },
+];
+
 describe("useSearchParams", () => {
   afterEach(cleanup);
 
@@ -275,6 +296,37 @@ describe("useSearchParams", () => {
     window.history.pushState(null, "", "/search-schema");
     render(<Router routes={routes} />);
     expect(screen.getByText("Page: 1")).toBeDefined();
+  });
+
+  it("setSearchParams merges new params into URL", async () => {
+    window.history.pushState(null, "", "/set-search?sort=date");
+    render(<Router routes={setSearchRoutes} />);
+    expect(screen.getByText("Sort: date")).toBeDefined();
+
+    await act(async () => {
+      screen.getByText("Set Q").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Query: world")).toBeDefined();
+      // 既存の sort も維持される
+      expect(screen.getByText("Sort: date")).toBeDefined();
+    });
+  });
+
+  it("setSearchParams removes param when value is null", async () => {
+    window.history.pushState(null, "", "/set-search?q=hello&sort=date");
+    render(<Router routes={setSearchRoutes} />);
+    expect(screen.getByText("Query: hello")).toBeDefined();
+
+    await act(async () => {
+      screen.getByText("Remove Q").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Query: none")).toBeDefined();
+      expect(screen.getByText("Sort: date")).toBeDefined();
+    });
   });
 });
 
