@@ -39,8 +39,8 @@ routes/recommend/
 
 | ファイル | 何を書くか | 判断基準 |
 |---------|-----------|---------|
-| `page.tsx` | JSX、レイアウト、props 渡し | 見た目に関すること |
-| `hooks.ts` | カスタムフック、イベントハンドラ、状態管理、純粋関数 | UIじゃないクライアントロジック全般 |
+| `page.tsx` | JSX、フック呼び出し、インラインのハンドラ | ページの「目次」として読める |
+| `hooks.ts` | カスタムフック、純粋関数 | 1フック1関心事。名前で意図が伝わる |
 | `server.ts` | loader（データ取得）+ action（データ変更） | サーバーで実行すること |
 | `schema.ts` | Zod スキーマ、型定義 | データの形の定義 |
 
@@ -64,6 +64,52 @@ routes/recommend/
 - シンプルなページなら `page.tsx` だけで済む
 - 膨らんできたら規約に従って分離する
 - Colocation の原則：「必要になったら引き上げる」
+
+## hooks.ts の設計原則 — page.tsx を「目次」にする
+
+hooks.ts にロジックを切り出すとき、「ロジックを全部外に出す」のが目的ではない。
+**page.tsx を開いたとき、このページが何をやっているか一目で分かる** のが目的。
+
+### 基準: Composed Method
+
+page.tsx のフック呼び出し部分だけ読めば、ページの処理フローが分かること。
+（Kent Beck の Composed Method パターン — メソッドは同じ抽象度のステップの並びとして読めるべき）
+
+```tsx
+// page.tsx — 3行で「何をやっているか」が分かる
+const { data: articles } = useArticles()
+const { filtered, totalCount } = useArticleFilter(articles ?? [], search.q, search.category)
+const { paged, currentPage, totalPages } = usePagination(filtered, search.page)
+```
+
+### ルール
+
+1. **フックは1つの関心事に1つ** — 「取得して絞り込んでページ分割する」は3つのフック
+2. **フック名と返り値の名前で意図が伝わること** — 中身を読まなくてもページの全体像が把握できる
+3. **ハンドラや変数は page.tsx にあってよい** — `setSearch({ category: cat })` のようなインラインの操作は UI の振る舞いなので page.tsx に残す
+
+### アンチパターン
+
+```tsx
+// ❌ 1つの巨大フックに全部入れる — 中身を読まないと何してるか分からない
+const { articles, filtered, paged, handlers, ... } = useArticleSearch()
+
+// ❌ ハンドラまで全部外に出す — page.tsx が空っぽの殻になる
+const { handleSearchInput, handleCategoryChange, handlePageChange } = useArticleHandlers()
+```
+
+### なぜこうするか
+
+「ロジックを hooks.ts に出せ」だけでは、切り出し方の基準がない。
+実際に3パターン試して検証した結果：
+
+| パターン | 問題 |
+|---------|------|
+| ハンドラまで全部出す | page.tsx が空の殻。何も分からない |
+| 1つの大きなフックにまとめる | フックの中身を読まないと何してるか分からない |
+| **責務ごとに小さく分ける** | **フック名の並びで処理フローが読める** ✅ |
+
+判断基準は「ロジック vs UI」ではなく、**「page.tsx が目次として読めるか」**。
 
 ## コンポーネントレベル
 
