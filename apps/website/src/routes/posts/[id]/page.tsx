@@ -14,7 +14,11 @@ export default function PostDetail() {
     <div>
       <h1>{post.title}</h1>
       <p>{post.body}</p>
-      <Link href="/posts">← Back to posts</Link>
+      <p>
+        <Link href={`/posts/${id}/edit`}>Edit</Link>
+        {" | "}
+        <Link href="/posts">← Back to posts</Link>
+      </p>
     </div>
   )
 }

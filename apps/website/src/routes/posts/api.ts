@@ -32,3 +32,12 @@ export async function createPost(title: string, body: string): Promise<Post> {
   posts.push(post)
   return post
 }
+
+export async function updatePost(id: string, data: { title: string; body: string }): Promise<Post> {
+  await delay(300)
+  const post = posts.find((p) => p.id === id)
+  if (!post) throw new Error("Post not found")
+  post.title = data.title
+  post.body = data.body
+  return { ...post }
+}

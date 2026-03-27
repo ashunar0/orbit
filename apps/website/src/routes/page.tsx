@@ -8,6 +8,8 @@ export default function Home() {
       <Link href="/about">About</Link>
       {" | "}
       <Link href="/posts">Posts (orbit-query demo)</Link>
+      {" | "}
+      <Link href="/demos/form">Form Demo (orbit-form)</Link>
     </div>
   );
 }
