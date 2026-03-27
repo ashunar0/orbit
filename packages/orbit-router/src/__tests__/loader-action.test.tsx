@@ -259,6 +259,7 @@ function SetSearchPage() {
       <button onClick={() => setSearch({ q: "world" })}>Set Q</button>
       <button onClick={() => setSearch({ q: null })}>Remove Q</button>
       <button onClick={() => setSearch({ q: "updated", sort: "name" })}>Set Both</button>
+      <button onClick={() => setSearch({ q: "replaced" }, { replace: true })}>Replace Q</button>
     </div>
   );
 }
@@ -312,6 +313,24 @@ describe("useSearchParams", () => {
       // 既存の sort も維持される
       expect(screen.getByText("Sort: date")).toBeDefined();
     });
+  });
+
+  it("setSearchParams with replace: true uses replaceState", async () => {
+    window.history.pushState(null, "", "/set-search?q=hello");
+    render(<Router routes={setSearchRoutes} />);
+    expect(screen.getByText("Query: hello")).toBeDefined();
+
+    const lengthBefore = window.history.length;
+
+    await act(async () => {
+      screen.getByText("Replace Q").click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Query: replaced")).toBeDefined();
+    });
+    // replaceState は history.length を増やさない
+    expect(window.history.length).toBe(lengthBefore);
   });
 
   it("setSearchParams removes param when value is null", async () => {

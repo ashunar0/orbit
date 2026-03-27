@@ -1,4 +1,4 @@
-import { useRouterStateContext, useRouterDispatchContext, useLoaderDataContext, useLayoutDataContext, type NavigationState } from "./router";
+import { useRouterStateContext, useRouterDispatchContext, useLoaderDataContext, useLayoutDataContext, type NavigationState, type SearchParamValue } from "./router";
 import type { RegisteredRoutePaths, RegisteredRouteParams, ValidHref } from "../types";
 
 /**
@@ -64,9 +64,6 @@ export function useSubmit(): (payload: FormData | Record<string, unknown>) => Pr
   return useRouterDispatchContext().submitAction;
 }
 
-/** search params の値として受け付ける型。null/undefined はそのキーを削除する */
-type SearchParamValue = string | number | boolean | null | undefined;
-
 /** search params を更新する関数。現在のパラメータにマージし、null/undefined のキーは削除する */
 type SetSearchParams = (
   params: Record<string, SearchParamValue>,
@@ -96,24 +93,10 @@ type SetSearchParams = (
 export function useSearchParams(): [Record<string, string>, SetSearchParams];
 export function useSearchParams<T>(parse: (raw: Record<string, string>) => T): [T, SetSearchParams];
 export function useSearchParams<T>(parse?: (raw: Record<string, string>) => T): [Record<string, string> | T, SetSearchParams] {
-  const { search, currentPath } = useRouterStateContext();
-  const { navigate } = useRouterDispatchContext();
+  const { search } = useRouterStateContext();
+  const { setSearchParams } = useRouterDispatchContext();
 
   const parsed = parse ? parse(search) : search;
-
-  const setSearchParams: SetSearchParams = (params, options) => {
-    const merged = { ...search };
-    for (const [key, value] of Object.entries(params)) {
-      if (value == null) {
-        delete merged[key];
-      } else {
-        merged[key] = String(value);
-      }
-    }
-    const qs = new URLSearchParams(merged).toString();
-    const url = qs ? `${currentPath}?${qs}` : currentPath;
-    navigate(url, options);
-  };
 
   return [parsed, setSearchParams];
 }

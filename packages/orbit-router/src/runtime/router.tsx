@@ -36,10 +36,14 @@ export interface RouterStateContextValue {
   navigationState: NavigationState;
 }
 
+/** search params の値として受け付ける型。null/undefined はそのキーを削除する */
+export type SearchParamValue = string | number | boolean | null | undefined;
+
 export interface RouterDispatchContextValue {
   navigate: (to: string | number, options?: { replace?: boolean }) => void;
   submitAction: (payload: FormData | Record<string, unknown>) => Promise<void>;
   prefetch: (to: string) => void;
+  setSearchParams: (params: Record<string, SearchParamValue>, options?: { replace?: boolean }) => void;
 }
 
 const RouterStateContext = createContext<RouterStateContextValue | null>(null);
@@ -190,6 +194,23 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
     }
     startNavigation(to);
   }, [startNavigation]);
+
+  const setSearchParams = useCallback((params: Record<string, SearchParamValue>, options?: { replace?: boolean }) => {
+    const currentUrl = committedUrlRef.current;
+    const currentPath = currentUrl.split("?")[0];
+    const currentSearch = parseSearchParams(currentUrl);
+    const merged = { ...currentSearch };
+    for (const [key, value] of Object.entries(params)) {
+      if (value == null) {
+        delete merged[key];
+      } else {
+        merged[key] = String(value);
+      }
+    }
+    const qs = new URLSearchParams(merged).toString();
+    const url = qs ? `${currentPath}?${qs}` : currentPath;
+    navigate(url, options);
+  }, [navigate]);
 
   const prefetch = useCallback((to: string) => {
     if (prefetchCache.current.has(to) || prefetchInFlight.current.has(to)) return;
@@ -470,8 +491,8 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
   );
 
   const dispatchCtx = useMemo<RouterDispatchContextValue>(
-    () => ({ navigate, submitAction, prefetch }),
-    [navigate, submitAction, prefetch],
+    () => ({ navigate, submitAction, prefetch, setSearchParams }),
+    [navigate, submitAction, prefetch, setSearchParams],
   );
 
   // ページコンテンツを決定
