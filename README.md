@@ -1,68 +1,92 @@
 # Orbit
 
-React のためのフロントエンドツールキット。ルーティング・データ取得・フォームを、一貫した規約と型安全で統合する。
+A frontend toolkit for React. Routing, data fetching, and forms — unified with consistent conventions and type safety.
 
-> **Design for the AI era** — 正しい書き方が1つしかない API 設計。AI が生成しても人間が書いても、同じコードになる。
+> **Designed for the AI era** — One correct way to write everything. Whether AI generates it or a human writes it, the code looks the same.
 
 ## Packages
 
-| パッケージ | 説明 | 状態 |
-|-----------|------|------|
-| [orbit-router](./packages/orbit-router/) | ディレクトリベースの React ルーター | v0.1.16 ✅ |
-| orbit-query | データ取得 + キャッシュ | 設計完了、実装準備中 |
-| orbit-form | React Compiler 互換のフォーム | 計画中 |
+| Package | Description | Version |
+|---------|-------------|---------|
+| [orbit-router](./packages/orbit-router/) | Directory-based router with typed params and links | v0.2.0 |
+| [orbit-query](./packages/orbit-query/) | Data fetching + caching (useQuery / useMutation) | v0.1.0 |
+| [orbit-form](./packages/orbit-form/) | React Compiler compatible forms with Zod validation | v0.1.4 |
 
 ## Why Orbit?
 
-### 1. AI が書いて、人間が読む
+### Code that AI writes and humans read
 
-AI コード生成が当たり前の時代に、ライブラリの API 設計に求められるものは変わった。
-同じことを書く方法が複数あると、AI は毎回違う書き方をする。チーム内で書き方がバラつく。
+AI writes code fast. But **humans still have to read it** — review it, debug it, maintain it.
 
-Orbit は **正しい書き方が1つしかない** ことを最優先に設計している。
-ファイルを置く場所、データの取り方、フォームの送り方 — すべてに規約がある。
+When a library has multiple ways to do the same thing, AI generates different code every time. Orbit eliminates that problem: **there is only one correct way**.
 
-### 2. React Compiler 互換
+### The 4-File Convention
 
-React Compiler（自動メモ化）と完全に共存する。
-`useSyncExternalStore` ベース、Proxy 不使用、クラスインスタンス不使用。
-既存ライブラリが後追いで苦しんでいる互換性問題を、設計段階で解決した。
+Every route follows the same structure:
 
-### 3. ゼロ設定の統合体験
-
-Vite プラグインを1つ追加するだけで、ルーティング・データ取得・フォームが動く。
-15個の設定ファイルは要らない。
-
-## Quick Start
-
-```bash
-pnpm add orbit-router
 ```
+routes/bookmarks/
+  server.ts    → Data access (plain async functions)
+  hooks.ts     → React hooks (useQuery / useMutation wrappers)
+  schema.ts    → Zod schemas + TypeScript types
+  page.tsx     → UI composition ("table of contents")
+```
+
+**`page.tsx` reads like a table of contents** — you can understand the entire page by scanning it top to bottom:
+
+```tsx
+export default function Bookmarks() {
+  // State — read from URL
+  const [search, setSearch] = useBookmarkSearch()
+
+  // Fetch — get data
+  const { data: bookmarks } = useBookmarks()
+  const { data: tags } = useTags()
+
+  // Transform — filter & sort
+  const filtered = filterBookmarks(bookmarks ?? [], search.q, search.tag)
+
+  // Mutate — write operations
+  const { mutate: remove } = useDeleteBookmark()
+
+  // Render
+  return <div>...</div>
+}
+```
+
+### React Compiler compatible
+
+Built from the ground up for React Compiler (automatic memoization):
+
+- `useSyncExternalStore` for external state sync
+- No Proxy-based reactivity
+- No class instances in hooks
+- Immutable hook return values
+
+No `useCallback`, `useMemo`, or `React.memo` needed — the compiler handles it.
+
+### Zero-config integration
+
+One Vite plugin. Three packages. Everything works together.
 
 ```ts
 // vite.config.ts
-import { orbitRouter } from "orbit-router"
-import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
+import react from "@vitejs/plugin-react"
+import { orbitRouter } from "orbit-router"
 
 export default defineConfig({
   plugins: [react(), orbitRouter()],
 })
 ```
 
+## Quick Start
+
+```bash
+pnpm add orbit-router orbit-query orbit-form zod
 ```
-src/routes/
-├── layout.tsx        → Root layout
-├── page.tsx          → /
-├── about/
-│   └── page.tsx      → /about
-└── users/
-    ├── page.tsx      → /users
-    ├── loader.ts     → Data fetching
-    ├── action.ts     → Form handling
-    └── [id]/
-        └── page.tsx  → /users/:id
-```
+
+### 1. Set up the router
 
 ```tsx
 // src/app.tsx
@@ -74,20 +98,151 @@ export function App() {
 }
 ```
 
-ファイルを置くだけで、ルートが生まれる。
+### 2. Create a route
+
+```
+src/routes/
+  page.tsx          → /
+  layout.tsx        → Root layout
+  about/
+    page.tsx        → /about
+  users/
+    page.tsx        → /users
+    [id]/
+      page.tsx      → /users/:id
+```
+
+Just drop files — routes appear automatically.
+
+### 3. Add data fetching
+
+```ts
+// routes/users/server.ts
+export async function getUsers(): Promise<User[]> {
+  const res = await fetch("/api/users")
+  return res.json()
+}
+```
+
+```ts
+// routes/users/hooks.ts
+import { useQuery } from "orbit-query"
+import { getUsers } from "./server"
+
+export function useUsers() {
+  return useQuery({
+    key: ["users"],
+    fn: ({ signal }) => getUsers(signal),
+  })
+}
+```
+
+```tsx
+// routes/users/page.tsx
+import { useUsers } from "./hooks"
+
+export default function Users() {
+  const { data: users, isLoading } = useUsers()
+  if (isLoading) return <p>Loading...</p>
+  return <ul>{users?.map(u => <li key={u.id}>{u.name}</li>)}</ul>
+}
+```
+
+### 4. Add forms
+
+```ts
+// routes/users/schema.ts
+import { z } from "zod"
+
+export const userSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
+})
+
+export type UserInput = z.input<typeof userSchema>
+```
+
+```tsx
+// routes/users/new/page.tsx
+import { useForm, Form } from "orbit-form"
+import { userSchema } from "../schema"
+
+export default function NewUser() {
+  const form = useForm({
+    schema: userSchema,
+    defaultValues: { name: "", email: "" },
+  })
+
+  return (
+    <Form form={form} onSubmit={handleSubmit}>
+      <input {...form.register("name")} />
+      {form.fieldError("name") && <p>{form.fieldError("name")}</p>}
+      <input {...form.register("email")} />
+      <button type="submit">Create</button>
+    </Form>
+  )
+}
+```
+
+## Data Flow
+
+Every page follows the same pattern: **State → Fetch → Transform → Mutate → Render**.
+
+Data flows top to bottom. No reverse dependencies. At any line, look up to see where the data came from.
+
+```
+server.ts  → What data can I access?
+hooks.ts   → How do I use it in React?
+page.tsx   → What do I show?
+schema.ts  → What shape is the data?
+```
+
+## Type-Safe Routing
+
+Orbit generates route types automatically. Params and links are fully typed:
+
+```tsx
+// Typed params
+const { id } = useParams<"/users/:id">()
+
+// Typed search params
+const [search, setSearch] = useSearchParams(parseSearchParams)
+
+// Type-safe links
+<Link href="/users/123">Profile</Link>
+```
+
+## File Conventions
+
+| File | Purpose |
+|------|---------|
+| `page.tsx` | Page component |
+| `hooks.ts` | Custom hooks (one concern per hook) |
+| `server.ts` | Server-side data access (RPC-style plain functions) |
+| `schema.ts` | Zod schemas + type definitions |
+| `layout.tsx` | Layout wrapper (no data fetching) |
+| `guard.ts` | Access control |
+| `error.tsx` | Error boundary |
+| `loading.tsx` | Loading state |
+| `not-found.tsx` | 404 page |
+
+## Design Philosophy
+
+Read the full design docs:
+
+- [Philosophy](./docs/philosophy.md) — Why readability over writability
+- [Architecture](./docs/architecture.md) — Data flow, Progressive Decomposition, file conventions rationale
+- [File Conventions](./docs/file-conventions.md) — Detailed rules for each file type
 
 ## Tech Stack
 
-- [Vite+](https://vite.dev/) (Rolldown, Oxlint, Vitest)
-- React 19
-- pnpm workspace
+- [Vite](https://vite.dev/) + React 19
+- [Zod](https://zod.dev/) for validation
+- pnpm workspace monorepo
 
-## Roadmap
+## Status
 
-- [x] **Phase 1** — CSR ルーター（ファイルベースルーティング、loader/action、error boundary）
-- [ ] **Phase 2** — orbit-query（データ取得 + キャッシュ + Orbit Router 統合）
-- [ ] **Phase 3** — 型安全ルーティング（typed params, typed links, typed search params）
-- [ ] **Phase 4** — orbit-form（React Compiler 互換のフォームライブラリ）
+Orbit is in early development (v0.x). The core APIs are stable and validated through real application development, but breaking changes may occur before v1.0.
 
 ## License
 
