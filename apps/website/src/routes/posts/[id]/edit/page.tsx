@@ -13,42 +13,34 @@ export default function PostEdit() {
     alert("Updated!")
   }
 
-  if (isLoading) return <p>Loading...</p>
-  if (error) return <p style={{ color: "red" }}>Error: {error.message}</p>
-  if (!post) return <p>Post not found</p>
+  if (isLoading) return <p className="text-gray-500">Loading...</p>
+  if (error) return <p className="text-red-600">Error: {error.message}</p>
+  if (!post) return <p className="text-gray-500">Post not found</p>
 
   return (
-    <div>
-      <h1>Edit Post</h1>
+    <div className="max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Edit Post</h1>
 
-      <Form form={form} onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 8 }}>
-          <label>
-            Title
-            <br />
-            <input {...form.register("title")} style={{ width: "100%", padding: 4 }} />
-            {form.fieldError("title") && (
-              <span style={{ color: "red", fontSize: "0.8em" }}>{form.fieldError("title")}</span>
-            )}
-          </label>
+      <Form form={form} onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Title</label>
+          <input {...form.register("title")} className="w-full border rounded px-3 py-1.5 text-sm" />
+          {form.fieldError("title") && <p className="text-red-500 text-xs mt-1">{form.fieldError("title")}</p>}
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <label>
-            Body
-            <br />
-            <textarea {...form.register("body")} style={{ width: "100%", minHeight: 100, padding: 4 }} />
-          </label>
+        <div>
+          <label className="block text-sm font-medium mb-1">Body</label>
+          <textarea {...form.register("body")} className="w-full border rounded px-3 py-1.5 text-sm min-h-[100px]" />
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button type="submit" disabled={form.isSubmitting || !form.isDirty}>
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={form.isSubmitting || !form.isDirty} className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50">
             {form.isSubmitting ? "Saving..." : "Save"}
           </button>
-          {form.isDirty && <span style={{ color: "#888", fontSize: "0.85em" }}>未保存の変更があります</span>}
+          {form.isDirty && <span className="text-xs text-gray-400">未保存の変更があります</span>}
         </div>
       </Form>
 
-      <p style={{ marginTop: 16 }}>
-        <Link href={`/posts/${id}`}>← Back to post</Link>
+      <p className="mt-6 text-sm">
+        <Link href={`/posts/${id}`} className="text-gray-500 hover:underline">&larr; Back to post</Link>
       </p>
     </div>
   )

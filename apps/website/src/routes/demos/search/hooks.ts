@@ -1,5 +1,5 @@
 import { useQuery } from "orbit-query"
-import { fetchArticles, type Article } from "./api"
+import { fetchArticles, type Article } from "./server"
 
 /** 記事一覧を取得する */
 export function useArticles() {

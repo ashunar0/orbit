@@ -14,12 +14,12 @@ export default function BlogPost() {
 
   return (
     <div>
-      <h1>{slug}</h1>
-      <p>{content}</p>
-      <p style={{ color: "#888", fontSize: 14 }}>
+      <h1 className="text-2xl font-bold mb-2">{slug}</h1>
+      <p className="mb-4">{content}</p>
+      <p className="text-sm text-gray-400">
         Route: <code>/blog/[slug]</code> → param: <code>{`{ slug: "${slug}" }`}</code>
       </p>
-      <Link href="/blog">← Back to blog</Link>
+      <Link href="/blog" className="text-gray-500 hover:underline text-sm">&larr; Back to blog</Link>
     </div>
   );
 }

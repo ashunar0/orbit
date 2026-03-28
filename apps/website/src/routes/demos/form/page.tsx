@@ -11,11 +11,9 @@ export default function FormDemo() {
     schema: orderSchema,
     defaultValues: defaultOrderValues,
     dependencies: {
-      // 配送方法が変わったら住所をリセット
       deliveryMethod: (value, form) => {
         if (value === "pickup") form.setValue("address", "");
       },
-      // 割引タイプが変わったら割引値をリセット
       discountType: (value, form) => {
         if (value === "none") form.setValue("discountValue", 0);
       },
@@ -27,64 +25,59 @@ export default function FormDemo() {
   };
 
   return (
-    <div style={{ maxWidth: 600 }}>
-      <h1>orbit-form Demo</h1>
-      <p style={{ color: "#888" }}>
+    <div className="max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-1">orbit-form Demo</h1>
+      <p className="text-gray-400 text-sm mb-4">
         dependencies / Zod refine / Zod transform の動作確認
       </p>
 
-      <form onSubmit={form.submit(handleSubmit)}>
-        <fieldset style={{ marginBottom: 16 }}>
-          <legend>基本情報</legend>
+      <form onSubmit={form.submit(handleSubmit)} className="space-y-4">
+        <fieldset className="space-y-2">
+          <legend className="font-semibold text-sm mb-1">基本情報</legend>
           <FormField form={form} name="customerName" label="顧客名" />
           <FormField form={form} name="email" label="メール" />
         </fieldset>
 
-        <fieldset style={{ marginBottom: 16 }}>
-          <legend>配送 (dependencies デモ)</legend>
+        <fieldset className="space-y-2">
+          <legend className="font-semibold text-sm mb-1">配送 (dependencies デモ)</legend>
           <DeliveryMethodField form={form} />
           <AddressField form={form} />
         </fieldset>
 
-        <fieldset style={{ marginBottom: 16 }}>
-          <legend>割引 (dependencies + refine デモ)</legend>
+        <fieldset className="space-y-2">
+          <legend className="font-semibold text-sm mb-1">割引 (dependencies + refine デモ)</legend>
           <DiscountTypeField form={form} />
           <DiscountValueField form={form} />
         </fieldset>
 
-        <fieldset style={{ marginBottom: 16 }}>
-          <legend>タグ (Zod transform デモ)</legend>
+        <fieldset className="space-y-2">
+          <legend className="font-semibold text-sm mb-1">タグ (Zod transform デモ)</legend>
           <FormField form={form} name="tags" label="タグ（カンマ区切り）" />
-          <p style={{ color: "#888", fontSize: "0.8em", margin: "4px 0 0" }}>
-            例: react, zod, orbit → submit 時に配列 ["react", "zod", "orbit"]
-            に変換
+          <p className="text-gray-400 text-xs">
+            例: react, zod, orbit → submit 時に配列 ["react", "zod", "orbit"] に変換
           </p>
         </fieldset>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button type="submit">Submit</button>
-          <button type="button" onClick={() => form.reset()}>
-            Reset
-          </button>
-          {form.isDirty && <span style={{ color: "#c80" }}>変更あり</span>}
+        <div className="flex items-center gap-3">
+          <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700">Submit</button>
+          <button type="button" onClick={() => form.reset()} className="border border-gray-300 px-4 py-1.5 rounded text-sm hover:bg-gray-50">Reset</button>
+          {form.isDirty && <span className="text-amber-600 text-sm">変更あり</span>}
         </div>
 
         {form.errors._root && (
-          <p style={{ color: "red" }}>{form.errors._root}</p>
+          <p className="text-red-600 text-sm">{form.errors._root}</p>
         )}
       </form>
 
       {submittedData && (
-        <div style={{ marginTop: 24 }}>
-          <h2>Submit 結果（Zod transform 適用後）</h2>
-          <pre style={{ background: "#f5f5f5", padding: 12, borderRadius: 4 }}>
-            {submittedData}
-          </pre>
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-2">Submit 結果（Zod transform 適用後）</h2>
+          <pre className="bg-gray-50 p-3 rounded text-sm overflow-auto">{submittedData}</pre>
         </div>
       )}
 
-      <p style={{ marginTop: 16 }}>
-        <Link href="/">← Home</Link>
+      <p className="mt-6 text-sm">
+        <Link href="/" className="text-gray-500 hover:underline">&larr; Home</Link>
       </p>
     </div>
   );
@@ -106,14 +99,13 @@ function FormField({
   if (!form.store) return null;
   const field = useField(form.store, name);
   return (
-    <div style={{ marginBottom: 8 }}>
-      <label>
+    <div>
+      <label className="block text-sm">
         {label}
-        <br />
-        <input {...field.props} value={String(field.props.value ?? "")} style={{ width: "100%", padding: 4 }} />
+        <input {...field.props} value={String(field.props.value ?? "")} className="mt-1 w-full border rounded px-3 py-1.5 text-sm" />
       </label>
       {field.touched && field.error && (
-        <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
+        <span className="text-red-500 text-xs">{field.error}</span>
       )}
     </div>
   );
@@ -123,16 +115,14 @@ function DeliveryMethodField({ form }: { form: FormType }) {
   if (!form.store) return null;
   const field = useField(form.store, "deliveryMethod");
   return (
-    <div style={{ marginBottom: 8 }}>
-      <label>
+    <div>
+      <label className="block text-sm">
         配送方法
-        <br />
         <select
           value={field.value as string}
-          onChange={(e) =>
-            field.setValue(e.target.value as "shipping" | "pickup")
-          }
+          onChange={(e) => field.setValue(e.target.value as "shipping" | "pickup")}
           onBlur={field.setTouched}
+          className="mt-1 w-full border rounded px-3 py-1.5 text-sm"
         >
           <option value="shipping">配送</option>
           <option value="pickup">店舗受取</option>
@@ -150,19 +140,18 @@ function AddressField({ form }: { form: FormType }) {
   const isRequired = deliveryMethod.value === "shipping";
 
   return (
-    <div style={{ marginBottom: 8 }}>
-      <label style={{ opacity: isRequired ? 1 : 0.5 }}>
+    <div className={isRequired ? "" : "opacity-50"}>
+      <label className="block text-sm">
         住所 {isRequired ? "(必須)" : "(不要)"}
-        <br />
         <input
           {...field.props}
           value={String(field.props.value ?? "")}
           disabled={!isRequired}
-          style={{ width: "100%", padding: 4 }}
+          className="mt-1 w-full border rounded px-3 py-1.5 text-sm disabled:bg-gray-100"
         />
       </label>
       {field.touched && field.error && (
-        <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
+        <span className="text-red-500 text-xs">{field.error}</span>
       )}
     </div>
   );
@@ -172,16 +161,14 @@ function DiscountTypeField({ form }: { form: FormType }) {
   if (!form.store) return null;
   const field = useField(form.store, "discountType");
   return (
-    <div style={{ marginBottom: 8 }}>
-      <label>
+    <div>
+      <label className="block text-sm">
         割引タイプ
-        <br />
         <select
           value={field.value as string}
-          onChange={(e) =>
-            field.setValue(e.target.value as "none" | "percent" | "fixed")
-          }
+          onChange={(e) => field.setValue(e.target.value as "none" | "percent" | "fixed")}
           onBlur={field.setTouched}
+          className="mt-1 w-full border rounded px-3 py-1.5 text-sm"
         >
           <option value="none">なし</option>
           <option value="percent">%割引</option>
@@ -201,21 +188,20 @@ function DiscountValueField({ form }: { form: FormType }) {
   const unit = discountType.value === "percent" ? "%" : "円";
 
   return (
-    <div style={{ marginBottom: 8 }}>
-      <label style={{ opacity: isDisabled ? 0.5 : 1 }}>
+    <div className={isDisabled ? "opacity-50" : ""}>
+      <label className="block text-sm">
         割引値 {!isDisabled && `(${unit})`}
-        <br />
         <input
           type="number"
           value={field.value as number}
           onChange={(e) => field.setValue(Number(e.target.value))}
           onBlur={field.setTouched}
           disabled={isDisabled}
-          style={{ width: 120, padding: 4 }}
+          className="mt-1 w-30 border rounded px-3 py-1.5 text-sm disabled:bg-gray-100"
         />
       </label>
       {field.touched && field.error && (
-        <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
+        <span className="text-red-500 text-xs">{field.error}</span>
       )}
     </div>
   );
