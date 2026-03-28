@@ -10,6 +10,8 @@ export default function Home() {
       <Link href="/posts">Posts (orbit-query demo)</Link>
       {" | "}
       <Link href="/demos/form">Form Demo (orbit-form)</Link>
+      {" | "}
+      <Link href="/bookmarks">Bookmarks</Link>
     </div>
   );
 }

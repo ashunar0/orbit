@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "orbit-router";
-import { useForm, useField } from "orbit-form";
+import type { z } from "zod";
+import { useForm, useField, type UseFormReturn } from "orbit-form";
 import { orderSchema, defaultOrderValues, type OrderInput } from "./schema";
 
 export default function FormDemo() {
@@ -91,7 +92,7 @@ export default function FormDemo() {
 
 // --- フィールドコンポーネント ---
 
-type FormType = ReturnType<typeof useForm<OrderInput, unknown>>;
+type FormType = UseFormReturn<OrderInput, z.output<typeof orderSchema>>;
 
 function FormField({
   form,
@@ -109,7 +110,7 @@ function FormField({
       <label>
         {label}
         <br />
-        <input {...field.props} style={{ width: "100%", padding: 4 }} />
+        <input {...field.props} value={String(field.props.value ?? "")} style={{ width: "100%", padding: 4 }} />
       </label>
       {field.touched && field.error && (
         <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
@@ -155,6 +156,7 @@ function AddressField({ form }: { form: FormType }) {
         <br />
         <input
           {...field.props}
+          value={String(field.props.value ?? "")}
           disabled={!isRequired}
           style={{ width: "100%", padding: 4 }}
         />
