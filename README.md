@@ -220,8 +220,8 @@ const [search, setSearch] = useSearchParams(parseSearchParams)
 | `hooks.ts` | Custom hooks (one concern per hook) |
 | `server.ts` | Server-side data access (RPC-style plain functions) |
 | `schema.ts` | Zod schemas + type definitions |
-| `layout.tsx` | Layout wrapper (no data fetching) |
-| `guard.ts` | Access control |
+| `layout.tsx` | Layout wrapper (no data fetching). Can also export a `guard` function |
+| `guard.ts` | Access control (alternative to exporting guard from layout) |
 | `error.tsx` | Error boundary |
 | `loading.tsx` | Loading state |
 | `not-found.tsx` | 404 page |

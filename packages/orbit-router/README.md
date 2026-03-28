@@ -70,8 +70,8 @@ src/routes/
 | File | Purpose |
 |------|---------|
 | `page.tsx` | Page component (required for a route to exist) |
-| `layout.tsx` | Wraps child routes with `{children}` prop |
-| `guard.ts` | Route-level access control. Return `true` to allow, or call `redirect()` to deny |
+| `layout.tsx` | Wraps child routes with `{children}` prop. Can also export a `guard` function |
+| `guard.ts` | Separate guard file (optional, takes priority over layout export) |
 | `loading.tsx` | Shown during initial page load |
 | `error.tsx` | Error boundary. Bubbles up to nearest parent if not present |
 | `not-found.tsx` | Custom 404 page (root level) |
@@ -118,15 +118,33 @@ import { Link } from "orbit-router"
 
 ### Guards
 
+Guards can be exported from `layout.tsx` (default) or placed in a separate `guard.ts` file:
+
+```tsx
+// routes/admin/layout.tsx — guard lives with the layout (recommended for short guards)
+import type { GuardArgs } from "orbit-router"
+import { redirect } from "orbit-router"
+
+export async function guard({ signal }: GuardArgs) {
+  const session = await getSession({ signal })
+  if (!session) redirect("/login")
+  return true
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <div>{children}</div>
+}
+```
+
+For complex guards, extract to a separate file:
+
 ```ts
-// routes/admin/guard.ts
+// routes/admin/guard.ts — takes priority over layout export
 import type { GuardArgs } from "orbit-router"
 import { redirect } from "orbit-router"
 
 export default async function guard({ signal }: GuardArgs) {
-  const session = await getSession({ signal })
-  if (!session) redirect("/login")
-  return true
+  // complex auth logic...
 }
 ```
 

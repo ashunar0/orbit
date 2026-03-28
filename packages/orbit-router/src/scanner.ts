@@ -6,8 +6,8 @@ export interface LayoutInfo {
   layoutPath: string;
   /** 同ディレクトリの error.tsx のフルパス（存在する場合） */
   errorPath?: string;
-  /** 同ディレクトリの guard.ts のフルパス（存在する場合） */
-  guardPath?: string;
+  /** guard のソース: "layout" = layout.tsx 内の export guard、パス文字列 = 独立 guard.ts */
+  guardSource?: "layout" | string;
 }
 
 export interface RouteEntry {
@@ -114,8 +114,13 @@ function collectLayouts(dir: string, routesRoot: string, pageDir: string): Layou
         const errorPath = findFile(current, "error");
         if (errorPath) info.errorPath = errorPath;
       }
-      const guardPath = findFile(current, "guard");
-      if (guardPath) info.guardPath = guardPath;
+      // guard の検出: guard.ts > layout.tsx 内の export guard の優先順
+      const guardFile = findFile(current, "guard");
+      if (guardFile) {
+        info.guardSource = guardFile;
+      } else if (layoutExportsGuard(layoutPath)) {
+        info.guardSource = "layout";
+      }
       layouts.push(info);
     }
 
@@ -126,6 +131,20 @@ function collectLayouts(dir: string, routesRoot: string, pageDir: string): Layou
   // 外側（ルート）から内側の順にする
   layouts.reverse();
   return layouts;
+}
+
+/**
+ * layout.tsx が guard をエクスポートしているかチェックする。
+ * ファイルを簡易パースして `export` + `guard` の存在を確認する。
+ */
+function layoutExportsGuard(layoutPath: string): boolean {
+  try {
+    const content = fs.readFileSync(layoutPath, "utf-8");
+    // export function guard / export async function guard / export const guard / export { guard }
+    return /export\s+(async\s+)?function\s+guard\b|export\s+(const|let|var)\s+guard\b|export\s*\{[^}]*\bguard\b/.test(content);
+  } catch {
+    return false;
+  }
 }
 
 function findFile(dir: string, name: string): string | undefined {

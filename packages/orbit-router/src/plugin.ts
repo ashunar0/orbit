@@ -125,14 +125,22 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
       entry += ` }`;
       return entry;
     });
-    const guardNames = route.layouts
-      .filter((l) => l.guardPath)
-      .map((l) => getGuardName(l.guardPath!));
+    const guardExprs: string[] = [];
+    for (const [idx, l] of route.layouts.entries()) {
+      if (!l.guardSource) continue;
+      if (l.guardSource === "layout") {
+        // layout.tsx 内の export guard を参照
+        guardExprs.push(`${layoutModNames[idx]}.guard`);
+      } else {
+        // 独立 guard.ts ファイル
+        guardExprs.push(getGuardName(l.guardSource));
+      }
+    }
     const fields: string[] = [
       `path: "${route.path}"`,
       `component: ${componentName}`,
       `layouts: [${layoutEntries.join(", ")}]`,
-      `guards: [${guardNames.join(", ")}]`,
+      `guards: [${guardExprs.join(", ")}]`,
     ];
 
     if (route.loadingPath) {
