@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0 (2026-03-28)
+
+### Breaking Changes
+
+- **loader / action パターンを完全削除** — データ取得は orbit-query、フォームは orbit-form を使用
+  - `useLoaderData`, `useLayoutData`, `useActionData`, `useSubmit` を削除
+  - `LoaderArgs`, `ActionArgs` 型を削除
+  - `<Form>` コンポーネントを削除（orbit-form の `<Form>` を使用）
+  - scanner が `loader.ts` / `action.ts` を認識しなくなった
+  - `Route` / `LayoutEntry` から `loader` / `action` フィールドを削除
+  - `NavigationState` から `"submitting"` を削除
+  - `Link` から `prefetch` prop を削除
+- `LoaderArgs` → `GuardArgs` にリネーム（guard 関数の引数型として維持）
+
+### Improvements
+
+- ルーターの責務を「ルーティング + ガード + ナビゲーション」に集中。コード量を大幅削減
+- `RouterDispatchContextValue` から `submitAction` / `prefetch` を削除し、`navigate` / `setSearchParams` のみに簡素化
+
 ## 0.1.19 (2026-03-28)
 
 ### Bug Fixes

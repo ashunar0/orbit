@@ -54,12 +54,13 @@ export function useForm<TSchema extends ZodType<any, ZodTypeDef, any>>(
     storeRef.current = createFormStore({ schema, defaultValues, dependencies })
   }
 
-  // defaultValues が変わったとき（非同期データ到着）に resetAll
-  const prevDefaultsRef = useRef(defaultValues)
+  // defaultValues: undefined → 値 への遷移（非同期データ到着）だけ検出する
+  // インラインオブジェクトでも無限ループしないよう、初回確定後は無視する
+  const defaultsInitializedRef = useRef(hasValues)
   useEffect(() => {
     if (defaultValues === undefined) return
-    if (prevDefaultsRef.current === defaultValues) return
-    prevDefaultsRef.current = defaultValues
+    if (defaultsInitializedRef.current) return
+    defaultsInitializedRef.current = true
 
     if (storeRef.current) {
       storeRef.current.resetAll(defaultValues)

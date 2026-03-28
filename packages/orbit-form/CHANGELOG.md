@@ -1,5 +1,11 @@
 # orbit-form
 
+## 0.1.4 (2026-03-28)
+
+### Bug Fixes
+
+- `useForm` の `defaultValues` にインラインオブジェクトを渡すと無限ループする問題を修正。defaultValues は初回確定時（undefined → 値）だけ読み、以降は無視するように変更
+
 ## 0.1.3 (2026-03-28)
 
 ### Features

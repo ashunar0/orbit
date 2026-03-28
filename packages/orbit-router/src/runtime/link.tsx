@@ -4,12 +4,10 @@ import type { ValidHref } from "../types";
 
 interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   href: ValidHref;
-  /** false を渡すと hover 時の prefetch を無効化する */
-  prefetch?: boolean;
 }
 
-export function Link({ href, children, onClick, prefetch: shouldPrefetch = true, ...rest }: LinkProps) {
-  const { navigate, prefetch } = useRouterDispatchContext();
+export function Link({ href, children, onClick, ...rest }: LinkProps) {
+  const { navigate } = useRouterDispatchContext();
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     // 修飾キーや右クリック時はブラウザのデフォルト動作を維持
@@ -21,12 +19,8 @@ export function Link({ href, children, onClick, prefetch: shouldPrefetch = true,
     navigate(href);
   };
 
-  const handleMouseEnter = () => {
-    if (shouldPrefetch) prefetch(href);
-  };
-
   return (
-    <a href={href} onClick={handleClick} onMouseEnter={handleMouseEnter} {...rest}>
+    <a href={href} onClick={handleClick} {...rest}>
       {children}
     </a>
   );

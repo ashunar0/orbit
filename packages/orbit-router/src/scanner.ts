@@ -15,10 +15,6 @@ export interface RouteEntry {
   filePath: string;
   /** layout 情報一覧（外側から内側の順） */
   layouts: LayoutInfo[];
-  /** loader.ts のフルパス（存在する場合） */
-  loaderPath?: string;
-  /** action.ts のフルパス（存在する場合） */
-  actionPath?: string;
   /** loading.tsx のフルパス（存在する場合） */
   loadingPath?: string;
   /** error.tsx のフルパス（存在する場合） */
@@ -79,12 +75,6 @@ async function walk(dir: string, routesRoot: string, routes: RouteEntry[]): Prom
       filePath: path.join(dir, pageFile.name),
       layouts,
     };
-
-    const loaderFile = findFile(dir, "loader");
-    if (loaderFile) entry.loaderPath = loaderFile;
-
-    const actionFile = findFile(dir, "action");
-    if (actionFile) entry.actionPath = actionFile;
 
     const loadingFile = findFile(dir, "loading");
     if (loadingFile) entry.loadingPath = loadingFile;

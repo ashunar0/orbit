@@ -1,13 +1,11 @@
-import { useLoaderData, Link } from "orbit-router";
-import type { loader } from "./loader";
+import { useParams, Link } from "orbit-router";
 
 export default function UserDetail() {
-  const { user } = useLoaderData<typeof loader>();
+  const { id } = useParams();
 
   return (
     <div>
-      <h1>{user.name}</h1>
-      <p>Email: {user.email}</p>
+      <h1>User {id}</h1>
       <Link href="/users">← Back to users</Link>
     </div>
   );

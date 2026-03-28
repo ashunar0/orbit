@@ -1,15 +1,10 @@
 /**
- * guard / loader / action 内でリダイレクトする。
+ * guard 内でリダイレクトする。
  * 内部で throw するので、呼び出し側は `redirect("/")` だけで OK。
  *
  * @example
  * export async function guard() {
  *   if (!isAuthenticated()) redirect("/login");
- * }
- *
- * export async function action({ data }: ActionArgs<LoginData>) {
- *   await login(data);
- *   redirect("/dashboard");
  * }
  */
 export class RedirectError {

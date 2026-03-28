@@ -76,8 +76,6 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
   // layout 階層の error.tsx import を管理
   const layoutErrorImportMap = new Map<string, string>();
 
-  let loaderCounter = 0;
-  let actionCounter = 0;
   let loadingCounter = 0;
   let errorCounter = 0;
 
@@ -101,18 +99,14 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     return name;
   }
 
-  let pageModCounter = 0;
-
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
-    const pageModName = `PageMod${pageModCounter++}`;
-    imports.push(`import * as ${pageModName} from "${toImportPath(route.filePath)}";`);
     lazyDecls.push(`const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`);
 
     const layoutModNames = route.layouts.map((l) => getLayoutModName(l.layoutPath));
     const layoutEntries = route.layouts.map((l, idx) => {
       const m = layoutModNames[idx];
-      let entry = `{ component: ${m}.default, loader: ${m}.loader`;
+      let entry = `{ component: ${m}.default`;
       if (l.errorPath) {
         entry += `, ErrorBoundary: ${getLayoutErrorName(l.errorPath)}`;
       }
@@ -125,24 +119,6 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
       `layouts: [${layoutEntries.join(", ")}]`,
       `guards: [${layoutModNames.map((m) => `${m}.guard`).join(", ")}].filter(Boolean)`,
     ];
-
-    if (route.loaderPath) {
-      const name = `loader${loaderCounter++}`;
-      imports.push(`import { loader as ${name} } from "${toImportPath(route.loaderPath)}";`);
-      fields.push(`loader: ${name}`);
-    } else {
-      // page.tsx 内に co-locate された loader をフォールバックとして使用
-      fields.push(`loader: ${pageModName}.loader`);
-    }
-
-    if (route.actionPath) {
-      const name = `action${actionCounter++}`;
-      imports.push(`import { action as ${name} } from "${toImportPath(route.actionPath)}";`);
-      fields.push(`action: ${name}`);
-    } else {
-      // page.tsx 内に co-locate された action をフォールバックとして使用
-      fields.push(`action: ${pageModName}.action`);
-    }
 
     if (route.loadingPath) {
       const name = `Loading${loadingCounter++}`;

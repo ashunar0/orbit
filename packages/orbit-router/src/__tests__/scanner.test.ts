@@ -91,22 +91,6 @@ describe("scanRoutes", () => {
     expect(routes[0].path).toBe("/");
   });
 
-  it("detects loader.ts alongside page.tsx", async () => {
-    createFile("users/page.tsx");
-    createFile("users/loader.ts", "export const loader = async () => ({})");
-    const { routes } = await scanRoutes(tmpDir, "routes");
-    const userRoute = routes.find((r) => r.path === "/users");
-    expect(userRoute?.loaderPath).toContain("loader.ts");
-  });
-
-  it("detects action.ts alongside page.tsx", async () => {
-    createFile("users/page.tsx");
-    createFile("users/action.ts", "export const action = async () => ({})");
-    const { routes } = await scanRoutes(tmpDir, "routes");
-    const userRoute = routes.find((r) => r.path === "/users");
-    expect(userRoute?.actionPath).toContain("action.ts");
-  });
-
   it("detects loading.tsx alongside page.tsx", async () => {
     createFile("users/page.tsx");
     createFile("users/loading.tsx", "export default () => 'Loading...'");
@@ -126,8 +110,6 @@ describe("scanRoutes", () => {
   it("does not set optional paths when files are absent", async () => {
     createFile("page.tsx");
     const { routes } = await scanRoutes(tmpDir, "routes");
-    expect(routes[0].loaderPath).toBeUndefined();
-    expect(routes[0].actionPath).toBeUndefined();
     expect(routes[0].loadingPath).toBeUndefined();
     expect(routes[0].errorPath).toBeUndefined();
   });

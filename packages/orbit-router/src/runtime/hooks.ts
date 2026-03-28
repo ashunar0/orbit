@@ -1,4 +1,4 @@
-import { useRouterStateContext, useRouterDispatchContext, useLoaderDataContext, useLayoutDataContext, type NavigationState, type SearchParamValue } from "./router";
+import { useRouterStateContext, useRouterDispatchContext, type NavigationState, type SearchParamValue } from "./router";
 import type { RegisteredRoutePaths, RegisteredRouteParams, ValidHref } from "../types";
 
 /**
@@ -14,54 +14,6 @@ import type { RegisteredRoutePaths, RegisteredRouteParams, ValidHref } from "../
  */
 export function useParams<T extends RegisteredRoutePaths = never>(): [T] extends [never] ? Record<string, string> : RegisteredRouteParams[T & keyof RegisteredRouteParams] {
   return useRouterStateContext().params as never;
-}
-
-/**
- * loader の戻り値を型付きで取得する。
- * layout / page それぞれ自分のセグメントの loader データを返す。
- *
- * @example
- * import type { loader } from './loader'
- * const data = useLoaderData<typeof loader>()
- */
-export function useLoaderData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> {
-  return useLoaderDataContext() as Awaited<ReturnType<T>>;
-}
-
-/**
- * 直近の親 layout の loader データを型付きで取得する。
- * page から親 layout のデータにアクセスしたい場合に使う。
- *
- * @example
- * import type { loader } from '../loader'  // layout の loader
- * const data = useLayoutData<typeof loader>()
- */
-export function useLayoutData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> {
-  return useLayoutDataContext() as Awaited<ReturnType<T>>;
-}
-
-/**
- * action の戻り値を型付きで取得する。
- *
- * @example
- * import type { action } from './action'
- * const data = useActionData<typeof action>()
- */
-export function useActionData<T extends (...args: never[]) => Promise<unknown>>(): Awaited<ReturnType<T>> | undefined {
-  return useRouterStateContext().actionData as Awaited<ReturnType<T>> | undefined;
-}
-
-/**
- * action を実行する関数を取得する。
- * JSON オブジェクトまたは FormData（ファイルアップロード時）を渡せる。
- *
- * @example
- * const submit = useSubmit()
- * submit({ email, password })          // JSON（普段はこれ）
- * submit(new FormData(form))           // FormData（ファイルアップロード時）
- */
-export function useSubmit(): (payload: FormData | Record<string, unknown>) => Promise<void> {
-  return useRouterDispatchContext().submitAction;
 }
 
 /** search params を更新する関数。現在のパラメータにマージし、null/undefined のキーは削除する */
@@ -106,7 +58,7 @@ export function useSearchParams<T>(parse?: (raw: Record<string, string>) => T): 
  *
  * @example
  * const { state } = useNavigation()
- * // state: "idle" | "loading" | "submitting"
+ * // state: "idle" | "loading"
  */
 export function useNavigation(): { state: NavigationState } {
   const { navigationState } = useRouterStateContext();
