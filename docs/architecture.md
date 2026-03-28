@@ -515,6 +515,62 @@ schema.ts  → データの形は何か（型定義とバリデーション）
 
 4ファイルの責務がさらにクリアになる。
 
+### スケール戦略 — フルスタックから分離へ
+
+server.ts の RPC パターンは、プロジェクトの成長に合わせてスケールする。
+
+**小さく始める（フルスタック）:**
+
+```tsx
+// server.ts — DB に直接アクセス
+export async function getUser(id: string) {
+  return db.user.findUnique({ where: { id } })
+}
+```
+
+**大きくなったら（フロント・バック分離）:**
+
+```tsx
+// server.ts — 外部 API を呼ぶ（バックエンドは Go でも Hono でも）
+export async function getUser(id: string) {
+  const res = await fetch(`https://api.example.com/users/${id}`)
+  return res.json()
+}
+```
+
+どちらの場合も **hooks.ts と page.tsx は同じコード**。server.ts の中身だけが変わる。
+
+```tsx
+// hooks.ts — フルスタックでも分離でも変わらない
+export function useUser(id: string) {
+  return useQuery({ key: ["users", id], fn: () => getUser(id) })
+}
+```
+
+これは Progressive Decomposition のアプリ規模版：
+- 個人開発で始める → server.ts に DB 直接アクセス
+- チームが大きくなった → バックエンドを分離、server.ts は API 呼び出しに変更
+- 移行コスト → server.ts の中身だけ。hooks.ts と page.tsx は触らない
+
+### SSR 実行環境
+
+SSR 導入時、server.ts は Cloudflare Workers 上で Hono を使って実行する。
+
+```
+ユーザーが書くコード:
+  server.ts → export function getUser(id) { ... }
+
+Orbit が担当する部分:
+  クライアント: getUser("123") → POST /rpc/users/getUser
+  サーバー: Hono がリクエストを受けて getUser を実行 → レスポンス返却
+```
+
+ユーザーからはただの関数呼び出し。裏の HTTP 通信は Orbit + Hono が担当する。
+「関数がサーバーで動くこと」は server.ts というファイル名で明示されているため、「隠さない」原則に反しない。
+
+server.ts では Web 標準 API（fetch, Request, Response, URL 等）を使う。
+Node.js 固有の API（fs, path 等）は使わない。これにより Cloudflare Workers で動作する。
+
 ### 移行方針
 
 現在の orbit-router には loader / action 関連の API がある（`useLoaderData`, `useActionData`, `LoaderArgs`, `ActionArgs` 等）。
