@@ -1,31 +1,15 @@
 import { Link, useParams } from "orbit-router"
-import { useQuery, useMutation } from "orbit-query"
-import { useForm, useField, Form, Field } from "orbit-form"
-import { postQuery } from "../../queries"
-import { updatePost } from "../../api"
-import { postSchema } from "../../schema"
+import { Form } from "orbit-form"
+import { usePost, useUpdatePost, useEditPostForm } from "../../hooks"
 
 export default function PostEdit() {
   const { id } = useParams<"/posts/:id">()
-
-  // orbit-query でデータ取得
-  const { data: post, isLoading, error } = useQuery(postQuery(id))
-
-  // mutation
-  const { mutate } = useMutation({
-    fn: (data: { title: string; body: string }) => updatePost(id, data),
-    invalidate: ["posts"],
-  })
-
-  // orbit-form — 非同期 defaultValues
-  // post が undefined の間は store: null → <Form> は null を返す
-  const form = useForm({
-    schema: postSchema,
-    defaultValues: post ?? undefined,
-  })
+  const { data: post, isLoading, error } = usePost(id)
+  const { mutate: update } = useUpdatePost(id)
+  const form = useEditPostForm(post ?? undefined)
 
   const handleSubmit = async (data: { title: string; body: string }) => {
-    await mutate(data)
+    await update(data)
     alert("Updated!")
   }
 
@@ -42,14 +26,17 @@ export default function PostEdit() {
           <label>
             Title
             <br />
-            <TitleField form={form} />
+            <input {...form.register("title")} style={{ width: "100%", padding: 4 }} />
+            {form.fieldError("title") && (
+              <span style={{ color: "red", fontSize: "0.8em" }}>{form.fieldError("title")}</span>
+            )}
           </label>
         </div>
         <div style={{ marginBottom: 8 }}>
           <label>
             Body
             <br />
-            <BodyField form={form} />
+            <textarea {...form.register("body")} style={{ width: "100%", minHeight: 100, padding: 4 }} />
           </label>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -64,31 +51,5 @@ export default function PostEdit() {
         <Link href={`/posts/${id}`}>← Back to post</Link>
       </p>
     </div>
-  )
-}
-
-function TitleField({ form }: { form: ReturnType<typeof useForm> }) {
-  if (!form.store) return null
-  const field = useField(form.store, "title")
-  return (
-    <>
-      <input {...field.props} style={{ width: "100%", padding: 4 }} />
-      {field.touched && field.error && (
-        <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
-      )}
-    </>
-  )
-}
-
-function BodyField({ form }: { form: ReturnType<typeof useForm> }) {
-  if (!form.store) return null
-  const field = useField(form.store, "body")
-  return (
-    <textarea
-      value={field.value as string}
-      onChange={(e) => field.setValue(e.target.value)}
-      onBlur={field.setTouched}
-      style={{ width: "100%", minHeight: 100, padding: 4 }}
-    />
   )
 }

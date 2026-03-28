@@ -1,10 +1,9 @@
 import { Link, useParams } from "orbit-router"
-import { useQuery } from "orbit-query"
-import { postQuery } from "../queries"
+import { usePost } from "../hooks"
 
 export default function PostDetail() {
   const { id } = useParams<"/posts/:id">()
-  const { data: post, isLoading, error } = useQuery(postQuery(id))
+  const { data: post, isLoading, error } = usePost(id)
 
   if (isLoading) return <p>Loading...</p>
   if (error) return <p style={{ color: "red" }}>Error: {error.message}</p>

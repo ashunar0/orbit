@@ -1,27 +1,14 @@
 import { Link } from "orbit-router"
-import { useQuery, useMutation } from "orbit-query"
-import { useForm, useField, Form, Field } from "orbit-form"
-import { createPost } from "./api"
-import { postsQuery } from "./queries"
-import { postSchema, type PostInput } from "./schema"
-
-const defaultValues: PostInput = { title: "", body: "" }
+import { Form } from "orbit-form"
+import { usePosts, useCreatePost, useCreatePostForm } from "./hooks"
 
 export default function Posts() {
-  const { data: posts, isLoading, error, refetch } = useQuery(postsQuery())
-
-  const { mutate } = useMutation({
-    fn: ({ title, body }: { title: string; body: string }) => createPost(title, body),
-    invalidate: ["posts"],
-  })
-
-  const form = useForm({
-    schema: postSchema,
-    defaultValues,
-  })
+  const { data: posts, isLoading, error, refetch } = usePosts()
+  const form = useCreatePostForm()
+  const { mutate: create } = useCreatePost()
 
   const handleSubmit = async (data: { title: string; body: string }) => {
-    await mutate(data)
+    await create(data)
     form.reset()
   }
 
@@ -43,28 +30,13 @@ export default function Posts() {
       <h2>New Post</h2>
       <Form form={form} onSubmit={handleSubmit}>
         <div>
-          <Field<PostInput, { title: string; body: string }, "title"> name="title">
-            {(field) => (
-              <>
-                <input placeholder="Title" {...field.props} />
-                {field.touched && field.error && (
-                  <span style={{ color: "red", fontSize: "0.8em" }}>{field.error}</span>
-                )}
-              </>
-            )}
-          </Field>
+          <input placeholder="Title" {...form.register("title")} />
+          {form.fieldError("title") && (
+            <span style={{ color: "red", fontSize: "0.8em" }}>{form.fieldError("title")}</span>
+          )}
         </div>
         <div>
-          <Field<PostInput, { title: string; body: string }, "body"> name="body">
-            {(field) => (
-              <textarea
-                placeholder="Body"
-                value={field.value}
-                onChange={(e) => field.setValue(e.target.value)}
-                onBlur={field.setTouched}
-              />
-            )}
-          </Field>
+          <textarea placeholder="Body" {...form.register("body")} />
         </div>
         <button type="submit" disabled={form.isSubmitting}>
           {form.isSubmitting ? "Posting..." : "Create Post"}
