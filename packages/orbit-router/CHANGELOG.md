@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.19 (2026-03-28)
+
+### Bug Fixes
+
+- `client.d.ts` の Route/LayoutEntry 型を本体と同期 — `guards` フィールド欠落、`LayoutEntry.ErrorBoundary` 欠落を修正
+
 ## 0.1.18 (2026-03-27)
 
 ### Features

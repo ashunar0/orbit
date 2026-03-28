@@ -17,22 +17,23 @@ export function useFormStore<TInput extends Record<string, unknown>, TOutput>():
 
 // --- Form ---
 
-export interface FormProps<TInput extends Record<string, unknown>, TOutput> {
-  form: { store: FormStore<TInput, TOutput> | null; submit: (onSubmit: (data: TOutput) => void | Promise<void>) => (e?: React.FormEvent) => void }
-  onSubmit: (data: TOutput) => void | Promise<void>
+export interface FormProps<TInput extends Record<string, unknown>, TOutput>
+  extends Omit<React.ComponentProps<"form">, "onSubmit" | "children"> {
+  form: { store: FormStore<TInput, TOutput> | null; submit: (onSubmit: (data: TOutput) => void | Promise<unknown>) => (e?: React.FormEvent) => void }
+  onSubmit: (data: TOutput) => void | Promise<unknown>
   children: ReactNode
 }
 
 export function Form<TInput extends Record<string, unknown>, TOutput>(
   props: FormProps<TInput, TOutput>,
 ) {
-  const { form, onSubmit, children } = props
+  const { form, onSubmit, children, ...rest } = props
 
   if (!form.store) return null
 
   return (
     <FormStoreContext value={form.store}>
-      <form onSubmit={form.submit(onSubmit)}>
+      <form onSubmit={form.submit(onSubmit)} {...rest}>
         {children}
       </form>
     </FormStoreContext>
@@ -43,7 +44,9 @@ export function Form<TInput extends Record<string, unknown>, TOutput>(
 
 export interface FieldProps<TInput extends Record<string, unknown>, TOutput, K extends keyof TInput & string> {
   name: K
-  /** store prop は省略可能。省略時は親の <Form> から自動取得 */
+  /** form prop を渡すと型推論が効く（推奨） */
+  form?: { store: FormStore<TInput, TOutput> | null }
+  /** store を直接渡す場合 */
   store?: FormStore<TInput, TOutput>
   children: (field: ReturnType<typeof useField<TInput, TOutput, K>>) => ReactNode
 }
@@ -52,9 +55,9 @@ export function Field<TInput extends Record<string, unknown>, TOutput, K extends
   props: FieldProps<TInput, TOutput, K>,
 ) {
   const contextStore = use(FormStoreContext)
-  const store = (props.store ?? contextStore) as FormStore<TInput, TOutput>
+  const store = (props.store ?? props.form?.store ?? contextStore) as FormStore<TInput, TOutput>
   if (!store) {
-    throw new Error("<Field> must be used within a <Form> or receive a store prop")
+    throw new Error("<Field> must be used within a <Form> or receive a form/store prop")
   }
   const field = useField(store, props.name)
   return <>{props.children(field)}</>

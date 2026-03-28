@@ -15,7 +15,7 @@
 
 - **隠すな、揃えろ** — Rails 的な「短いけど裏で何が起きてるかわからない」を避ける。Hono 的な「展開済みで明示的」を目指す
 - **規約は道標であって壁ではない** — デフォルトはシンプルで読みやすく。逸れることは禁止しない
-- **React Compiler 互換** — `useSyncExternalStore`、Proxy 不使用、クラスインスタンス不使用、hooks 戻り値の不変性
+- **React Compiler 前提** — `useSyncExternalStore`、Proxy 不使用、クラスインスタンス不使用、hooks 戻り値の不変性。`useCallback` / `useMemo` / `React.memo` は書かない（React Compiler が自動メモ化する）
 - **YAGNI** — 必要になるまで作らない
 
 ## プロジェクト概要
@@ -27,9 +27,9 @@ Orbit は React のためのフロントエンドツールキット。
 
 | パッケージ | 説明 | 状態 |
 |-----------|------|------|
-| `orbit-router` | ディレクトリベースルーター | v0.1.18 |
+| `orbit-router` | ディレクトリベースルーター | v0.1.19 |
 | `orbit-query` | データ取得 + キャッシュ | v0.1.0 |
-| `orbit-form` | React Compiler 互換フォーム | v0.1.0 |
+| `orbit-form` | React Compiler 互換フォーム | v0.1.3 |
 
 ## リポジトリ構成
 
@@ -95,6 +95,7 @@ cd packages/orbit-router && pnpm run test
 - [x] **Phase 2** — orbit-query 実装
 - [x] **Phase 3** — orbit-router 型安全化（typed params, typed links, typed search params）
 - [x] **Phase 4** — orbit-form 実装
+- [x] **Phase 5** — アーキテクチャ検証（Todoist クローンで実証。orbit-form の API 改善、Router 型定義修正、React Compiler 互換確認）
 
 ## ディレクトリ規約
 
@@ -105,16 +106,57 @@ routes/about/page.tsx        → /about
 routes/users/[id]/page.tsx   → /users/:id
 ```
 
-- `page.tsx` = ページコンポーネント
-- `layout.tsx` = レイアウト（`{children}` で子を囲む）
-- `loader.ts` = データ取得
-- `action.ts` = フォーム送信処理
+- `page.tsx` = ページコンポーネント（「目次」として読めること）
+- `hooks.ts` = カスタムフック（1フック1関心事。名前で意図が伝わる）
+- `server.ts` = サーバー側のデータアクセス関数（RPC スタイル。ただの関数を export する）
+- `schema.ts` = Zod スキーマ + 型定義
+- `layout.tsx` = レイアウト（`{children}` で子を囲む。データ取得しない）
 - `guard.ts` = アクセス制御
 - `error.tsx` = エラー境界（親へ自動バブリング）
 - `loading.tsx` = ローディング状態
 - `not-found.tsx` = 404 ページ
 - `[param]` = 動的セグメント
 - `_` 始まりのディレクトリはスキップ
+
+### ファイル間のデータフロー
+
+```
+server.ts  → データアクセス関数（getTasks, createTask 等）
+hooks.ts   → useQuery / useMutation でラップ（useTasks, useCreateTask 等）
+page.tsx   → hooks を呼んで JSX を書く（目次）
+schema.ts  → searchParams / フォームの型とバリデーション
+```
+
+### page.tsx のデータフロー
+
+```tsx
+// page.tsx — 上から下に読めば処理フローがわかる
+const [search, setSearch] = useSearchParams(searchSchema)  // State
+const { data: tasks } = useTasks()                          // Fetch
+const filtered = useTaskFilter(tasks, search.q)             // Transform
+const { mutate: toggle } = useToggleTask()                  // Mutate
+return <div>...</div>                                        // Render
+```
+
+### orbit-form の使い方
+
+```tsx
+// hooks.ts — useForm でスキーマとデフォルト値を渡す
+export function useCreateTaskForm() {
+  return useForm({ schema: taskCreateSchema, defaultValues: { title: "", priority: "medium" } })
+}
+
+// page.tsx — register でフィールドをバインド
+const form = useCreateTaskForm()
+const { mutate: create } = useCreateTask()
+
+<Form form={form} onSubmit={create}>
+  <input {...form.register("title")} />
+  {form.fieldError("title") && <p>{form.fieldError("title")}</p>}
+</Form>
+```
+
+**注意: `<Field>` コンポーネントは使わない。`form.register()` を使う。**
 
 ## 既知の問題
 

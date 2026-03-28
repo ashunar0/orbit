@@ -1,6 +1,7 @@
-# Orbit Router — CLAUDE.md テンプレート
+# Orbit — CLAUDE.md テンプレート
 
-新しいプロジェクトで orbit-router を使うときに、CLAUDE.md にコピペしてください。
+新しいプロジェクトで Orbit を使うときに、CLAUDE.md にコピペしてください。
+`{{...}}` はプロジェクトに合わせて置き換えること。
 
 ---
 
@@ -8,16 +9,24 @@
 
 ---
 
-## ルーティング（orbit-router）
+## プロジェクト概要
 
-orbit-router を使用。ディレクトリベースの React ルーター。
-API リファレンスは `node_modules/orbit-router/README.md` を参照すること。
+{{プロジェクトの説明}}
 
-### セットアップ
+## 技術スタック
+
+- **UI**: React 19
+- **ルーティング**: orbit-router（ディレクトリベース）
+- **データ取得**: orbit-query（useQuery / useMutation）
+- **フォーム**: orbit-form（useForm / register）
+- **バリデーション**: Zod
+- **ツールチェーン**: Vite+
+
+## セットアップ
 
 ```ts
 // vite.config.ts
-import { defineConfig } from "vite";
+import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import { orbitRouter } from "orbit-router";
 
@@ -30,112 +39,167 @@ export default defineConfig({
 // src/app.tsx
 import { routes, NotFound } from "virtual:orbit-router/routes";
 import { Router } from "orbit-router";
+import { QueryProvider, createQueryClient } from "orbit-query";
+
+const queryClient = createQueryClient();
 
 export function App() {
-  return <Router routes={routes} NotFound={NotFound} />;
+  return (
+    <QueryProvider client={queryClient}>
+      <Router routes={routes} NotFound={NotFound} />
+    </QueryProvider>
+  );
 }
 ```
 
-仮想モジュールの型を有効にするため、エントリファイルに以下を追加：
-```ts
-/// <reference types="orbit-router/client" />
+tsconfig.json の `types` に `"orbit-router/client"` を追加すること。
+
+## Orbit ファイル規約（必ず従うこと）
+
+各ルートは最大4ファイルで構成される。Progressive Decomposition に従い、まず `page.tsx` だけで始め、膨らんだら分離する。
+
+```
+routes/xxx/
+  page.tsx       ← UI（JSX + フック呼び出し）。ページの「目次」として読める
+  hooks.ts       ← カスタムフック。1フック1関心事。名前で意図が伝わる
+  server.ts      ← サーバー側のデータアクセス関数（RPC スタイル。ただの関数を export）
+  schema.ts      ← Zod スキーマ + 型定義
 ```
 
-### ファイル規約
+### ファイル間のデータフロー（この順番で書くこと）
 
 ```
-src/routes/
-  page.tsx          → / （ページコンポーネント）
-  layout.tsx        → ルートレイアウト（{children} を受け取る）
-  not-found.tsx     → 404 ページ
-  about/
-    page.tsx        → /about
-  users/
-    page.tsx        → /users
-    loader.ts       → データ取得（将来 server.ts に統合予定）
-    action.ts       → データ変更（将来 server.ts に統合予定）
-    loading.tsx     → ローディング UI
-    error.tsx       → エラー UI
-    [id]/
-      page.tsx      → /users/:id
+server.ts  → データアクセス関数（getTasks, createTask 等）
+hooks.ts   → useQuery / useMutation でラップ（useTasks, useCreateTask 等）
+page.tsx   → hooks を呼んで JSX を書く（目次）
+schema.ts  → searchParams / フォームの型とバリデーション
 ```
 
-- ページは `page.tsx`（index.tsx ではない）
-- レイアウトは `layout.tsx`（`{children}` prop を受け取って描画する）
-- 動的セグメントは `[param]` ディレクトリ
-- `_` 始まりのディレクトリはルーティング対象外
+### server.ts の書き方（RPC スタイル）
 
-### loader / action（将来 RPC に移行予定）
-
-> **注意**: Orbit は loader / action パターンから RPC スタイル（server.ts にただの関数を書く）に移行予定。
-> 詳細は `docs/architecture.md` の「server.ts は RPC」セクションを参照。
-> 以下は現行 API のリファレンス。
+loader / action パターンは使わない。ただの関数を export する：
 
 ```ts
-// loader.ts — ページ描画前にデータを取得
-export async function loader({ params, search }) {
-  const res = await fetch(`/api/items/${params.id}`);
-  return res.json();
+// ✅ RPC — 誰でも読める
+export async function getTasks() { ... }
+export async function createTask(input: TaskInput) { ... }
+
+// ❌ loader / action — 使わない
+export async function loader() { ... }
+```
+
+### hooks.ts の書き方
+
+server.ts の関数を useQuery / useMutation でラップする：
+
+```ts
+import { useQuery, useMutation } from "orbit-query";
+import { getTasks, createTask } from "./server";
+
+export function useTasks() {
+  return useQuery({ key: ["tasks"], fn: () => getTasks() });
 }
 
-// action.ts — フォーム送信・データ変更
-// JSON（デフォルト）と FormData（ファイルアップロード時）の両方に対応
-export async function action({ data, formData, params, search }) {
-  // JSON で送信された場合 → data に入る
-  // FormData で送信された場合 → formData に入る
-  await fetch("/api/items", { method: "POST", body: JSON.stringify(data) });
-  return { success: true };
+export function useCreateTask() {
+  const navigate = useNavigate();
+  return useMutation({
+    fn: createTask,
+    invalidate: ["tasks"],
+    onSuccess: () => navigate("/"),
+  });
 }
 ```
 
-### hooks
+### page.tsx の書き方（目次パターン）
+
+page.tsx はデータフローが上から下に読める「目次」であること：
+
+```tsx
+export default function TasksPage() {
+  // State
+  const [search, setSearch] = useSearchParams((raw) => searchSchema.parse(raw));
+
+  // Fetch
+  const { data: tasks, isLoading } = useTasks();
+
+  // Transform
+  const filtered = useTaskFilter(tasks, search.q, search.priority);
+
+  // Mutate
+  const { mutate: toggle } = useToggleTask();
+
+  // Render
+  return <div>...</div>;
+}
+```
+
+```tsx
+// ❌ 悪い例 — 1つの巨大フックに全部入れる
+const { tasks, filtered, handlers, ... } = useTaskPage();
+```
+
+### orbit-form の使い方
+
+`form.register()` でフィールドをバインドする。`<Field>` コンポーネントは使わない：
+
+```tsx
+// hooks.ts
+export function useCreateTaskForm() {
+  return useForm({ schema: taskCreateSchema, defaultValues: { title: "", priority: "medium" } });
+}
+
+// page.tsx
+const form = useCreateTaskForm();
+const { mutate: create } = useCreateTask();
+
+<Form form={form} onSubmit={create} className="space-y-4">
+  <div>
+    <input {...form.register("title")} />
+    {form.fieldError("title") && <p>{form.fieldError("title")}</p>}
+  </div>
+</Form>
+```
+
+## ルーティング規約
+
+```
+routes/page.tsx              → /
+routes/layout.tsx            → ルートレイアウト
+routes/about/page.tsx        → /about
+routes/tasks/[id]/page.tsx   → /tasks/:id
+```
+
+- `page.tsx` = ページコンポーネント
+- `layout.tsx` = レイアウト（{children} で子を囲む。データ取得しない）
+- `[param]` = 動的セグメント
+- `_` 始まりのディレクトリはスキップ
+
+## 設計原則
+
+- **読みやすさ > 書きやすさ** — 短さのために処理を隠さない
+- **隠すな、揃えろ** — 暗黙の動作より明示的なコード
+- **YAGNI** — 必要になるまで作らない
+- **React Compiler 前提** — `useCallback` / `useMemo` / `React.memo` は書かない
+- **Progressive Decomposition** — まず粗い粒度で書く → 読めなくなったら分解 → 分解先は規約で決まっている
+
+## hooks
 
 ```tsx
 import {
   useParams,        // ルートパラメータ: { id: "123" }
-  useLoaderData,    // loader の返り値（型: useLoaderData<typeof loader>()）
-  useActionData,    // action の返り値
-  useSubmit,        // action を呼ぶ: submit({ email, password }) or submit(formData)
   useSearchParams,  // クエリパラメータ（Zod バリデーション対応）
   useNavigation,    // ナビゲーション状態: "idle" | "loading" | "submitting"
   useNavigate,      // プログラム的遷移: navigate("/path") or navigate(-1)
+  Link,             // SPA リンク: <Link href="/about">About</Link>
 } from "orbit-router";
-```
 
-### Link コンポーネント
+import {
+  useQuery,         // データ取得: useQuery({ key, fn })
+  useMutation,      // データ変更: useMutation({ fn, invalidate, onSuccess })
+} from "orbit-query";
 
-```tsx
-import { Link } from "orbit-router";
-
-// href を使う（to ではない）。hover で自動 prefetch。
-<Link href="/about">About</Link>
-<Link href="/about" prefetch={false}>About</Link>
-```
-
-### guard（認証・権限ガード）
-
-layout.tsx に `guard` 関数を export すると、loader の前に実行される。
-子ルート全体に自動伝播する。
-
-```tsx
-// routes/admin/layout.tsx
-import { redirect } from "orbit-router";
-
-export async function guard() {
-  const token = localStorage.getItem("session");
-  if (!token) throw redirect("/login");
-}
-
-export default function AdminLayout({ children }) {
-  return <div>{children}</div>;
-}
-```
-
-### navigate のオプション
-
-```ts
-const navigate = useNavigate();
-navigate("/dashboard");              // 通常遷移
-navigate("/login", { replace: true }); // 履歴を置換（戻るで戻れなくなる）
-navigate(-1);                         // ブラウザバック相当
+import {
+  useForm,          // フォーム: useForm({ schema, defaultValues })
+  Form,             // フォームラッパー: <Form form={form} onSubmit={handler}>
+} from "orbit-form";
 ```

@@ -3,10 +3,21 @@ import type { ZodType, ZodTypeDef } from "zod"
 import { createFormStore } from "./store"
 import type { DependencyCallback, FormStore } from "./types"
 
-export interface UseFormOptions<TInput extends Record<string, unknown>, TOutput> {
-  schema: ZodType<TOutput, ZodTypeDef, TInput>
-  defaultValues: TInput | undefined
-  dependencies?: { [K in keyof TInput]?: DependencyCallback<TInput, K> }
+/** Zod スキーマから input 型を抽出 */
+type InferInput<T extends ZodType> = T["_input"]
+/** Zod スキーマから output 型を抽出 */
+type InferOutput<T extends ZodType> = T["_output"]
+
+export interface UseFormOptions<TSchema extends ZodType<any, ZodTypeDef, any>> {
+  schema: TSchema
+  defaultValues: InferInput<TSchema> | undefined
+  dependencies?: { [K in keyof InferInput<TSchema>]?: DependencyCallback<InferInput<TSchema>, K> }
+}
+
+export interface RegisterProps<T> {
+  value: T
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void
+  onBlur: () => void
 }
 
 export interface UseFormReturn<TInput extends Record<string, unknown>, TOutput> {
@@ -16,13 +27,19 @@ export interface UseFormReturn<TInput extends Record<string, unknown>, TOutput> 
   errors: { [K in keyof TInput]?: string } & { _root?: string }
   isDirty: boolean
   isSubmitting: boolean
-  submit: (onSubmit: (data: TOutput) => void | Promise<void>) => (e?: React.FormEvent) => void
+  submit: (onSubmit: (data: TOutput) => void | Promise<unknown>) => (e?: React.FormEvent) => void
   reset: (name?: keyof TInput) => void
+  /** フィールドを HTML input にバインドする props を返す */
+  register: <K extends keyof TInput & string>(name: K) => RegisterProps<TInput[K]>
+  /** フィールドのエラーメッセージを返す */
+  fieldError: <K extends keyof TInput>(name: K) => string | undefined
 }
 
-export function useForm<TInput extends Record<string, unknown>, TOutput>(
-  options: UseFormOptions<TInput, TOutput>,
-): UseFormReturn<TInput, TOutput> {
+export function useForm<TSchema extends ZodType<any, ZodTypeDef, any>>(
+  options: UseFormOptions<TSchema>,
+): UseFormReturn<InferInput<TSchema>, InferOutput<TSchema>> {
+  type TInput = InferInput<TSchema>
+  type TOutput = InferOutput<TSchema>
   const { schema, defaultValues, dependencies } = options
 
   // defaultValues が undefined の間は空のストアを使わない
@@ -61,7 +78,7 @@ export function useForm<TInput extends Record<string, unknown>, TOutput>(
 
   // submit: onSubmit をクロージャでキャプチャ（レンダリング中の副作用なし）
   const submit = useMemo(() => {
-    return (onSubmit: (data: TOutput) => void | Promise<void>) => {
+    return (onSubmit: (data: TOutput) => void | Promise<unknown>) => {
       return (e?: React.FormEvent) => {
         e?.preventDefault()
         if (!store) return
@@ -86,6 +103,25 @@ export function useForm<TInput extends Record<string, unknown>, TOutput>(
     }
   }, [store])
 
+  // register: フィールドを HTML input にバインドする props を返す
+  // snapshot から読むだけ — useSyncExternalStore で購読済みなので再レンダリング時に最新値が返る
+  function register<K extends keyof TInput & string>(name: K): RegisterProps<TInput[K]> {
+    return {
+      value: snapshot.values[name],
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        store?.setValue(name, e.target.value as TInput[K])
+      },
+      onBlur: () => {
+        store?.setTouched(name)
+        store?.validateField(name)
+      },
+    }
+  }
+
+  function fieldError<K extends keyof TInput>(name: K): string | undefined {
+    return snapshot.errors[name]
+  }
+
   return {
     store,
     values: snapshot.values,
@@ -94,6 +130,8 @@ export function useForm<TInput extends Record<string, unknown>, TOutput>(
     isSubmitting: snapshot.isSubmitting,
     submit,
     reset,
+    register,
+    fieldError,
   }
 }
 

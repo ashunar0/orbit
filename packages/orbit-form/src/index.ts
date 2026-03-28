@@ -11,6 +11,6 @@ export type {
   DependencyCallback,
 } from "./types"
 
-export type { UseFormOptions, UseFormReturn } from "./use-form"
+export type { UseFormOptions, UseFormReturn, RegisterProps } from "./use-form"
 export type { UseFieldReturn } from "./use-field"
 export type { FormProps, FieldProps } from "./components"
