@@ -52,8 +52,8 @@ src/routes/
     page.tsx        → /about
   users/
     page.tsx        → /users
-    loader.ts       → データ取得
-    action.ts       → データ変更
+    loader.ts       → データ取得（将来 server.ts に統合予定）
+    action.ts       → データ変更（将来 server.ts に統合予定）
     loading.tsx     → ローディング UI
     error.tsx       → エラー UI
     [id]/
@@ -65,7 +65,11 @@ src/routes/
 - 動的セグメントは `[param]` ディレクトリ
 - `_` 始まりのディレクトリはルーティング対象外
 
-### loader / action
+### loader / action（将来 RPC に移行予定）
+
+> **注意**: Orbit は loader / action パターンから RPC スタイル（server.ts にただの関数を書く）に移行予定。
+> 詳細は `docs/architecture.md` の「server.ts は RPC」セクションを参照。
+> 以下は現行 API のリファレンス。
 
 ```ts
 // loader.ts — ページ描画前にデータを取得
