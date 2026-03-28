@@ -6,6 +6,8 @@ export interface LayoutInfo {
   layoutPath: string;
   /** 同ディレクトリの error.tsx のフルパス（存在する場合） */
   errorPath?: string;
+  /** 同ディレクトリの guard.ts のフルパス（存在する場合） */
+  guardPath?: string;
 }
 
 export interface RouteEntry {
@@ -112,6 +114,8 @@ function collectLayouts(dir: string, routesRoot: string, pageDir: string): Layou
         const errorPath = findFile(current, "error");
         if (errorPath) info.errorPath = errorPath;
       }
+      const guardPath = findFile(current, "guard");
+      if (guardPath) info.guardPath = guardPath;
       layouts.push(info);
     }
 

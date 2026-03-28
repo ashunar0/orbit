@@ -35,8 +35,7 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
       },
       configureServer(server) {
         // ファイル追加・削除 → ルート構造が変わるので仮想モジュール再生成 + full-reload
-        // NOTE: layout.tsx の export 追加・削除（loader/guard）は import * as のライブバインディングで
-        //       Fast Refresh 経由で反映されるため、virtual module の再生成は不要
+        // NOTE: guard.ts の追加・削除はファイル構造の変更なので watcher が検出し再生成される
         const routesPath = path.resolve(root, routesDir);
         const onStructureChange = async (file: string) => {
           if (!file.startsWith(routesPath)) return;
@@ -75,6 +74,9 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
   let layoutCounter = 0;
   // layout 階層の error.tsx import を管理
   const layoutErrorImportMap = new Map<string, string>();
+  // guard.ts import を管理
+  const guardImportMap = new Map<string, string>();
+  let guardCounter = 0;
 
   let loadingCounter = 0;
   let errorCounter = 0;
@@ -99,6 +101,16 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     return name;
   }
 
+  function getGuardName(guardPath: string): string {
+    let name = guardImportMap.get(guardPath);
+    if (!name) {
+      name = `Guard${guardCounter++}`;
+      guardImportMap.set(guardPath, name);
+      imports.push(`import ${name} from "${toImportPath(guardPath)}";`);
+    }
+    return name;
+  }
+
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
     lazyDecls.push(`const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`);
@@ -113,11 +125,14 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
       entry += ` }`;
       return entry;
     });
+    const guardNames = route.layouts
+      .filter((l) => l.guardPath)
+      .map((l) => getGuardName(l.guardPath!));
     const fields: string[] = [
       `path: "${route.path}"`,
       `component: ${componentName}`,
       `layouts: [${layoutEntries.join(", ")}]`,
-      `guards: [${layoutModNames.map((m) => `${m}.guard`).join(", ")}].filter(Boolean)`,
+      `guards: [${guardNames.join(", ")}]`,
     ];
 
     if (route.loadingPath) {
