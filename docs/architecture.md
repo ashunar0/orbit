@@ -575,3 +575,42 @@ Node.js 固有の API（fs, path 等）は使わない。これにより Cloudfl
 
 現在の orbit-router には loader / action 関連の API がある（`useLoaderData`, `useActionData`, `LoaderArgs`, `ActionArgs` 等）。
 これらは RPC パターンの導入に伴い、段階的に非推奨→削除する。まだ誰も使っていないため、破壊的変更のリスクはない。
+
+## ロードマップ
+
+### Phase 5: アーキテクチャ検証
+
+**Step 1: RPC 移行**
+
+orbit-router から loader / action 関連を削除し、RPC パターンに移行する。
+
+- `useLoaderData`, `useActionData`, `LoaderArgs`, `ActionArgs` を削除
+- scanner から `loader.ts`, `action.ts` の認識を外す
+- server.ts を「ただの関数置き場」として位置づける
+- 利用者ゼロのため、破壊的変更のリスクなし
+
+**Step 2: 実アプリで検証**
+
+architecture.md の原則が実際に機能するか、アプリを1つ作って検証する。
+以下のパターンを網羅できるアプリが望ましい（例: Todoist クローン）：
+
+- 一覧 → 詳細 → 編集 → 保存 → 一覧に戻る（基本フロー）
+- server.ts（RPC）→ hooks.ts → page.tsx の3ファイル連携
+- Providers（認証などの共通データ層）
+- ページ間フロー（Mutate → Invalidate → Re-fetch）
+- Progressive Decomposition が自然に適用できるか
+
+**Step 3: 振り返り**
+
+- 各ページが「目次として読める」か確認
+- 足りない API、余計な API の洗い出し
+- architecture.md の修正（原則が壊れたところがあれば更新）
+
+### Phase 6: SSR
+
+Step 2 の検証完了後に着手する。
+
+- server.ts をサーバーで実行する仕組み
+- Hono + Cloudflare Workers
+- データのシリアライズと hydration
+- サーバービルドパイプライン
