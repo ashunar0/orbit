@@ -83,9 +83,13 @@ interface RouterProps {
 
 export function Router({ routes, NotFound, ErrorFallback, url }: RouterProps) {
   const isSSR = url !== undefined;
-  const [committedUrl, setCommittedUrl] = useState(
-    () => url ?? window.location.pathname + window.location.search,
-  );
+  const [committedUrl, setCommittedUrl] = useState(() => {
+    if (url !== undefined) return url;
+    if (typeof window === "undefined") {
+      throw new Error("<Router> requires `url` prop in SSR environments");
+    }
+    return window.location.pathname + window.location.search;
+  });
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const pendingUrlRef = useRef<string | null>(null);
   const [initialGuardDone, setInitialGuardDone] = useState(false);
