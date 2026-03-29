@@ -1,0 +1,12 @@
+{
+  "name": "create-orbit-app",
+  "version": "0.1.2",
+  "description": "Create a new Orbit project",
+  "type": "module",
+  "bin": {
+    "create-orbit": "./bin/create-orbit.mjs"
+  },
+  "files": ["bin", "template"],
+  "keywords": ["orbit", "react", "vite", "router", "form", "query"],
+  "license": "MIT"
+}
