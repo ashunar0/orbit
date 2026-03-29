@@ -18,6 +18,11 @@ export class RedirectError {
 }
 
 export function redirect(to: string, options?: { replace?: boolean }): never {
+  if (!to.startsWith("/") || to.startsWith("//")) {
+    throw new Error(
+      `redirect() only accepts internal paths (must start with "/" and not "//"). Received: ${to}`,
+    );
+  }
   throw new RedirectError(to, options);
 }
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.2 (2026-03-29)
+
+### Security
+
+- `redirect()` に内部パスバリデーションを追加 — `/` で始まるパスのみ許可し、外部 URL（`https://...`）、protocol-relative URL（`//...`）、`javascript:` URI を拒否するように変更。guard 内で `?returnUrl=` 等の URL パラメータをそのまま redirect に渡した場合のオープンリダイレクト脆弱性を防止
+
+## 0.2.1 (2026-03-28)
+
+### Features
+
+- `usePathname()` を追加 — 現在のパスを取得。サイドバーのアクティブリンク判定等に使用
+
 ## 0.2.0 (2026-03-28)
 
 ### Breaking Changes

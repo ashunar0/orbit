@@ -1,5 +1,19 @@
 # orbit-form
 
+## 0.1.6 (2026-03-29)
+
+### Bug Fixes
+
+- `useForm` の `defaultValues` が動的ルート遷移時に追従しない問題を修正。shallow equal で実質的な変更を検出し `resetAll` するように変更（例: `/issues/1` → `/issues/2` でフォームが古い値のまま残るバグ）
+
+## 0.1.5 (2026-03-28)
+
+### Features
+
+- `useForm()` の返り値に `setValue()` を追加 — Select, DatePicker 等の非 input コンポーネントと型安全に連携可能に
+  - `form.setValue("status", "done")` で Zod スキーマから推論された型がそのまま効く
+  - `store?.setValue()` 経由の null チェック＋型キャストが不要に
+
 ## 0.1.4 (2026-03-28)
 
 ### Bug Fixes

@@ -54,6 +54,18 @@ export function useSearchParams<T>(parse?: (raw: Record<string, string>) => T): 
 }
 
 /**
+ * 現在のパスを取得する。
+ * サイドバーのアクティブリンク判定などに使う。
+ *
+ * @example
+ * const pathname = usePathname()
+ * // pathname: "/users/1"
+ */
+export function usePathname(): string {
+  return useRouterStateContext().currentPath;
+}
+
+/**
  * ナビゲーションの状態を取得する。
  *
  * @example

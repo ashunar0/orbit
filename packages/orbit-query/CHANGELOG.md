@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.1 (2026-03-29)
+
+### Security
+
+- `invalidate` 内の `JSON.parse` を除去 — `CacheEntry` に元の `key` を保持することで、re-parse によるプロトタイプ汚染リスクを排除
+
+### Bug Fixes
+
+- `serializeKey` で `undefined` と `null` が同一キーに衝突する問題を修正 — sentinel 値で区別するように変更。オブジェクトキーの順序も正規化
+- subscriber が 0 になったキャッシュエントリが永久に残る問題を修正 — 5分後に GC で自動削除（再 subscribe 時はタイマーキャンセル）
+
 ## v0.1.0 (2026-03-26)
 
 初回リリース。

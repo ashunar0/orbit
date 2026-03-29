@@ -31,6 +31,8 @@ export interface UseFormReturn<TInput extends Record<string, unknown>, TOutput> 
   reset: (name?: keyof TInput) => void
   /** フィールドを HTML input にバインドする props を返す */
   register: <K extends keyof TInput & string>(name: K) => RegisterProps<TInput[K]>
+  /** プログラム的にフィールドの値を設定する（Select, DatePicker 等の非 input コンポーネント向け） */
+  setValue: <K extends keyof TInput & string>(name: K, value: TInput[K]) => void
   /** フィールドのエラーメッセージを返す */
   fieldError: <K extends keyof TInput>(name: K) => string | undefined
 }
@@ -54,13 +56,15 @@ export function useForm<TSchema extends ZodType<any, ZodTypeDef, any>>(
     storeRef.current = createFormStore({ schema, defaultValues, dependencies })
   }
 
-  // defaultValues: undefined → 値 への遷移（非同期データ到着）だけ検出する
-  // インラインオブジェクトでも無限ループしないよう、初回確定後は無視する
-  const defaultsInitializedRef = useRef(hasValues)
+  // defaultValues が変わったら resetAll で反映する
+  // - undefined → 値: 非同期データ到着（初回）
+  // - 値A → 値B: 同じコンポーネントが別データで再利用（例: /issues/1 → /issues/2）
+  // インラインオブジェクトで毎レンダリング新参照になっても shallow equal でスキップ
+  const prevDefaultsRef = useRef(defaultValues)
   useEffect(() => {
     if (defaultValues === undefined) return
-    if (defaultsInitializedRef.current) return
-    defaultsInitializedRef.current = true
+    if (shallowEqual(prevDefaultsRef.current, defaultValues)) return
+    prevDefaultsRef.current = defaultValues
 
     if (storeRef.current) {
       storeRef.current.resetAll(defaultValues)
@@ -119,6 +123,10 @@ export function useForm<TSchema extends ZodType<any, ZodTypeDef, any>>(
     }
   }
 
+  function setValue<K extends keyof TInput & string>(name: K, value: TInput[K]) {
+    store?.setValue(name, value)
+  }
+
   function fieldError<K extends keyof TInput>(name: K): string | undefined {
     return snapshot.errors[name]
   }
@@ -132,6 +140,7 @@ export function useForm<TSchema extends ZodType<any, ZodTypeDef, any>>(
     submit,
     reset,
     register,
+    setValue,
     fieldError,
   }
 }
@@ -142,4 +151,16 @@ const EMPTY_STATE = {
   touched: {},
   isDirty: false,
   isSubmitting: false,
+}
+
+function shallowEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false
+  const keysA = Object.keys(a as Record<string, unknown>)
+  const keysB = Object.keys(b as Record<string, unknown>)
+  if (keysA.length !== keysB.length) return false
+  for (const key of keysA) {
+    if (!Object.is((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) return false
+  }
+  return true
 }

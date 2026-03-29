@@ -1,23 +1,42 @@
 import type { QueryClient, QueryKey, QueryOptions, QueryState } from "./types"
 
+const UNDEFINED_SENTINEL = "__orbit_undefined__"
+
+/** undefined と null を区別してシリアライズする */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_, v) => {
+    if (v === undefined) return UNDEFINED_SENTINEL
+    if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+      return Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+    }
+    return v
+  })
+}
+
 function serializeKey(key: QueryKey): string {
-  return JSON.stringify(key)
+  return stableStringify(key)
 }
 
 function matchesPrefix(target: QueryKey, prefix: unknown[]): boolean {
   if (prefix.length > target.length) return false
-  return JSON.stringify(prefix) === JSON.stringify(target.slice(0, prefix.length))
+  return stableStringify(prefix) === stableStringify(target.slice(0, prefix.length))
 }
 
+/** subscriber がいなくなってからキャッシュを保持する時間（5分） */
+const GC_TIME = 5 * 60 * 1000
+
 interface CacheEntry {
+  key: QueryKey
   state: QueryState
   updatedAt: number
   subscribers: Set<() => void>
   abortController: AbortController | null
-  /** 現在の options を保持する ref。ensureFetch で更新される */
+  /** ���在の options を保持する ref。ensureFetch で更新される */
   currentOptions: QueryOptions | null
-  /** 安定参照の refetch 関数。entry 作成時に1回だけ生成 */
+  /** 安���参照の refetch 関数。entry 作成時���1回だけ生成 */
   refetchStable: () => void
+  /** GC タイマー ID */
+  gcTimer: ReturnType<typeof setTimeout> | null
 }
 
 const INITIAL_STATE: QueryState = {
@@ -42,6 +61,7 @@ export function createQueryClient(): QueryClient {
     let entry = cache.get(hash)
     if (!entry) {
       entry = {
+        key,
         state: { ...INITIAL_STATE },
         updatedAt: 0,
         subscribers: new Set(),
@@ -49,6 +69,7 @@ export function createQueryClient(): QueryClient {
         currentOptions: null,
         // placeholder — 下で上書き
         refetchStable: noop,
+        gcTimer: null,
       }
       // entry を closure でキャプチャして安定参照を作る
       const stableEntry = entry
@@ -131,12 +152,11 @@ export function createQueryClient(): QueryClient {
     },
 
     invalidate(key: unknown[]) {
-      for (const [hash, entry] of cache) {
-        const parsedKey = JSON.parse(hash) as QueryKey
-        if (matchesPrefix(parsedKey, key)) {
-          // stale にしてリフェッチ
+      for (const [, entry] of cache) {
+        if (matchesPrefix(entry.key, key)) {
+          // stale にし��リフェッチ
           entry.updatedAt = 0
-          // subscriber がいる（= マウント中の useQuery がある）場合のみリフェッチ
+          // subscriber ��いる（= マウント中の useQuery が���る）場合のみリフェッチ
           if (entry.subscribers.size > 0) {
             entry.refetchStable()
           }
@@ -161,10 +181,24 @@ export function createQueryClient(): QueryClient {
     },
 
     subscribe(key: QueryKey, callback: () => void): () => void {
+      const hash = serializeKey(key)
       const entry = getEntry(key)
+      // subscribe 時に GC タイマーをキャンセル（再マウント対応）
+      if (entry.gcTimer !== null) {
+        clearTimeout(entry.gcTimer)
+        entry.gcTimer = null
+      }
       entry.subscribers.add(callback)
       return () => {
         entry.subscribers.delete(callback)
+        // subscriber が 0 になったら GC をスケジュール
+        if (entry.subscribers.size === 0) {
+          entry.gcTimer = setTimeout(() => {
+            if (entry.subscribers.size === 0) {
+              cache.delete(hash)
+            }
+          }, GC_TIME)
+        }
       }
     },
 
