@@ -232,13 +232,14 @@ export function createQueryClient(): QueryClient {
         const entry = getEntry(query.key);
         // 既にデータがある場合はスキップ（クライアント側が優先）
         if (entry.state.status === "success") continue;
-        entry.state = {
+        setState(query.key, entry, {
           data: query.data,
           error: null,
           status: "success",
           isFetching: false,
-        };
-        entry.updatedAt = query.updatedAt;
+        });
+        // Date.now() を使い、hydrate 直後の不要な再フェッチを防ぐ
+        entry.updatedAt = Date.now();
       }
     },
 

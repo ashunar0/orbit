@@ -177,8 +177,9 @@ export function Router({ routes, NotFound, ErrorFallback, url }: RouterProps) {
     [navigate],
   );
 
-  // pending ルートの guard 実行
+  // pending ルートの guard 実行（SSR 時はスキップ）
   useEffect(() => {
+    if (isSSR) return;
     if (!pendingUrl) return;
 
     const pendingPath = pendingUrl.split("?")[0];
