@@ -15,8 +15,7 @@ export default function GuidePage() {
           <code>routes/docs/layout.tsx</code> — Docs layout (green border)
         </li>
         <li>
-          <code>routes/docs/guide/layout.tsx</code> — Guide layout (orange
-          border)
+          <code>routes/docs/guide/layout.tsx</code> — Guide layout (orange border)
         </li>
       </ol>
       <p>

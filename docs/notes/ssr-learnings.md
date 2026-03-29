@@ -68,6 +68,7 @@ React.createElement("li", { className: "task" }, "牛乳を買う")
 ```
 
 CSR の流れ:
+
 1. 空の HTML が来る
 2. React がコンポーネントを実行 → 仮想 DOM ができる
 3. 仮想 DOM → 本物の DOM を「生成」する
@@ -108,20 +109,21 @@ const theme = localStorage.getItem("theme");
 // → ReferenceError: localStorage is not defined
 
 // パターン B: 条件分岐で回避 → 動くけどズレる
-const theme = typeof window !== "undefined"
-  ? localStorage.getItem("theme")  // ブラウザ → "dark"
-  : null;                           // サーバー → null
+const theme =
+  typeof window !== "undefined"
+    ? localStorage.getItem("theme") // ブラウザ → "dark"
+    : null; // サーバー → null
 // → hydration エラー（サーバーとクライアントで結果が違う）
 ```
 
 ### 他フレームワークとの対比
 
-| フレームワーク | アプローチ |
-|---|---|
-| **React** | CSR 設計 → SSR 後付け → hydration が必要（2回実行） |
-| **Qwik** | SSR 前提設計 → Resumability（再実行せず続きからやる） |
-| **Astro** | サーバーファースト → JS を送らない = hydration 不要 |
-| **Svelte** | コンパイル時最適化 → 仮想 DOM 自体がない |
+| フレームワーク | アプローチ                                            |
+| -------------- | ----------------------------------------------------- |
+| **React**      | CSR 設計 → SSR 後付け → hydration が必要（2回実行）   |
+| **Qwik**       | SSR 前提設計 → Resumability（再実行せず続きからやる） |
+| **Astro**      | サーバーファースト → JS を送らない = hydration 不要   |
+| **Svelte**     | コンパイル時最適化 → 仮想 DOM 自体がない              |
 
 ---
 
@@ -227,6 +229,7 @@ SSR + API:
 ```
 
 4層 SSR のメリット:
+
 - 初期表示が速い（HTML 完成済み）
 - SEO が効く
 - API 通信がサーバー間で安定
@@ -234,16 +237,17 @@ SSR + API:
 
 ### SSR が必要なケース vs 不要なケース
 
-| ケース | SSR の価値 |
-|---|---|
-| EC サイト（初期表示 = 売上） | ◎ 高い |
-| メディア・ブログ（SEO 命） | ◎ 高い |
-| LP・マーケティングページ | ○ ある |
-| ログイン後の管理画面 | △ 薄い |
-| ダッシュボード・業務アプリ | ✕ ほぼ不要 |
-| 社内ツール | ✕ 不要 |
+| ケース                       | SSR の価値 |
+| ---------------------------- | ---------- |
+| EC サイト（初期表示 = 売上） | ◎ 高い     |
+| メディア・ブログ（SEO 命）   | ◎ 高い     |
+| LP・マーケティングページ     | ○ ある     |
+| ログイン後の管理画面         | △ 薄い     |
+| ダッシュボード・業務アプリ   | ✕ ほぼ不要 |
+| 社内ツール                   | ✕ 不要     |
 
 **業務アプリ・管理画面が CSR で十分な理由:**
+
 - ログイン必須 → SEO 不要
 - インタラクティブな要素が多い → 全コンポーネントが hydration 必要 → SSR しても結局 JS を全部実行する
 - 会社支給 PC or 業務端末 → デバイス性能がある程度保証される

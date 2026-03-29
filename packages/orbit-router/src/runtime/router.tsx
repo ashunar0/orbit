@@ -1,4 +1,17 @@
-import { Component, Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type LazyExoticComponent, type ReactNode } from "react";
+import {
+  Component,
+  Suspense,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type LazyExoticComponent,
+  type ReactNode,
+} from "react";
 import { matchRoute } from "./match";
 import { isRedirectError } from "./redirect";
 import type { GuardArgs } from "../types";
@@ -35,7 +48,10 @@ export type SearchParamValue = string | number | boolean | null | undefined;
 
 export interface RouterDispatchContextValue {
   navigate: (to: string | number, options?: { replace?: boolean }) => void;
-  setSearchParams: (params: Record<string, SearchParamValue>, options?: { replace?: boolean }) => void;
+  setSearchParams: (
+    params: Record<string, SearchParamValue>,
+    options?: { replace?: boolean },
+  ) => void;
 }
 
 const RouterStateContext = createContext<RouterStateContextValue | null>(null);
@@ -64,7 +80,9 @@ interface RouterProps {
 }
 
 export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
-  const [committedUrl, setCommittedUrl] = useState(() => window.location.pathname + window.location.search);
+  const [committedUrl, setCommittedUrl] = useState(
+    () => window.location.pathname + window.location.search,
+  );
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const pendingUrlRef = useRef<string | null>(null);
   const [initialGuardDone, setInitialGuardDone] = useState(false);
@@ -90,19 +108,22 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
   };
 
   // ナビゲーション開始: guard あり → pending、なし → 即コミット
-  const startNavigation = useCallback((to: string) => {
-    const toPath = to.split("?")[0];
-    const toMatched = findMatchedRoute(routes, toPath);
-    const hasGuards = toMatched && toMatched.route.guards.length > 0;
+  const startNavigation = useCallback(
+    (to: string) => {
+      const toPath = to.split("?")[0];
+      const toMatched = findMatchedRoute(routes, toPath);
+      const hasGuards = toMatched && toMatched.route.guards.length > 0;
 
-    if (hasGuards) {
-      setPendingUrl(to);
-      pendingUrlRef.current = to;
-      setNavigationState("loading");
-    } else {
-      commitRoute(to);
-    }
-  }, [routes]);
+      if (hasGuards) {
+        setPendingUrl(to);
+        pendingUrlRef.current = to;
+        setNavigationState("loading");
+      } else {
+        commitRoute(to);
+      }
+    },
+    [routes],
+  );
 
   // popstate 対応
   useEffect(() => {
@@ -114,36 +135,42 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
     return () => window.removeEventListener("popstate", onPopState);
   }, [startNavigation]);
 
-  const navigate = useCallback((to: string | number, options?: { replace?: boolean }) => {
-    if (typeof to === "number") {
-      window.history.go(to);
-      return;
-    }
-    if (to === committedUrlRef.current && !pendingUrlRef.current) return;
-    if (options?.replace) {
-      window.history.replaceState(null, "", to);
-    } else {
-      window.history.pushState(null, "", to);
-    }
-    startNavigation(to);
-  }, [startNavigation]);
-
-  const setSearchParams = useCallback((params: Record<string, SearchParamValue>, options?: { replace?: boolean }) => {
-    const currentUrl = committedUrlRef.current;
-    const currentPath = currentUrl.split("?")[0];
-    const currentSearch = parseSearchParams(currentUrl);
-    const merged = { ...currentSearch };
-    for (const [key, value] of Object.entries(params)) {
-      if (value == null) {
-        delete merged[key];
-      } else {
-        merged[key] = String(value);
+  const navigate = useCallback(
+    (to: string | number, options?: { replace?: boolean }) => {
+      if (typeof to === "number") {
+        window.history.go(to);
+        return;
       }
-    }
-    const qs = new URLSearchParams(merged).toString();
-    const url = qs ? `${currentPath}?${qs}` : currentPath;
-    navigate(url, options);
-  }, [navigate]);
+      if (to === committedUrlRef.current && !pendingUrlRef.current) return;
+      if (options?.replace) {
+        window.history.replaceState(null, "", to);
+      } else {
+        window.history.pushState(null, "", to);
+      }
+      startNavigation(to);
+    },
+    [startNavigation],
+  );
+
+  const setSearchParams = useCallback(
+    (params: Record<string, SearchParamValue>, options?: { replace?: boolean }) => {
+      const currentUrl = committedUrlRef.current;
+      const currentPath = currentUrl.split("?")[0];
+      const currentSearch = parseSearchParams(currentUrl);
+      const merged = { ...currentSearch };
+      for (const [key, value] of Object.entries(params)) {
+        if (value == null) {
+          delete merged[key];
+        } else {
+          merged[key] = String(value);
+        }
+      }
+      const qs = new URLSearchParams(merged).toString();
+      const url = qs ? `${currentPath}?${qs}` : currentPath;
+      navigate(url, options);
+    },
+    [navigate],
+  );
 
   // pending ルートの guard 実行
   useEffect(() => {
@@ -191,7 +218,9 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
       setNavigationState("idle");
     });
 
-    return () => { controller.abort(); };
+    return () => {
+      controller.abort();
+    };
   }, [pendingUrl]);
 
   // 初回 guard 実行（ページロード時）
@@ -232,7 +261,9 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
       setNavigationState("idle");
     });
 
-    return () => { controller.abort(); };
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const stateCtx = useMemo<RouterStateContextValue>(
@@ -280,7 +311,11 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
 
     // page レベルの ErrorBoundary（render エラーキャッチ用）
     if (committedMatched.route.ErrorBoundary) {
-      content = <RouteErrorBoundary key={committedPath} fallback={committedMatched.route.ErrorBoundary}>{content}</RouteErrorBoundary>;
+      content = (
+        <RouteErrorBoundary key={committedPath} fallback={committedMatched.route.ErrorBoundary}>
+          {content}
+        </RouteErrorBoundary>
+      );
     }
   }
 
@@ -290,7 +325,11 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
       const layout = committedMatched.route.layouts[i];
       const Layout = layout.component;
       if (layout.ErrorBoundary) {
-        content = <RouteErrorBoundary key={`${committedPath}-layout-${i}`} fallback={layout.ErrorBoundary}>{content}</RouteErrorBoundary>;
+        content = (
+          <RouteErrorBoundary key={`${committedPath}-layout-${i}`} fallback={layout.ErrorBoundary}>
+            {content}
+          </RouteErrorBoundary>
+        );
       }
       content = <Layout>{content}</Layout>;
     }
@@ -298,14 +337,16 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
 
   // Router レベルの ErrorFallback
   if (ErrorFallback) {
-    content = <RouteErrorBoundary key="router-fallback" fallback={ErrorFallback}>{content}</RouteErrorBoundary>;
+    content = (
+      <RouteErrorBoundary key="router-fallback" fallback={ErrorFallback}>
+        {content}
+      </RouteErrorBoundary>
+    );
   }
 
   return (
     <RouterStateContext.Provider value={stateCtx}>
-      <RouterDispatchContext.Provider value={dispatchCtx}>
-        {content}
-      </RouterDispatchContext.Provider>
+      <RouterDispatchContext.Provider value={dispatchCtx}>{content}</RouterDispatchContext.Provider>
     </RouterStateContext.Provider>
   );
 }

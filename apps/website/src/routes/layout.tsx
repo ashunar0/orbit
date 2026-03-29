@@ -23,11 +23,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen">
       <NavigationProgress />
       <nav className="flex gap-4 px-4 py-3 border-b text-sm">
-        <Link href="/" className="hover:text-blue-600">Home</Link>
-        <Link href="/about" className="hover:text-blue-600">About</Link>
-        <Link href="/users" className="hover:text-blue-600">Users</Link>
-        <Link href="/docs" className="hover:text-blue-600">Docs</Link>
-        <Link href="/blog" className="hover:text-blue-600">Blog</Link>
+        <Link href="/" className="hover:text-blue-600">
+          Home
+        </Link>
+        <Link href="/about" className="hover:text-blue-600">
+          About
+        </Link>
+        <Link href="/users" className="hover:text-blue-600">
+          Users
+        </Link>
+        <Link href="/docs" className="hover:text-blue-600">
+          Docs
+        </Link>
+        <Link href="/blog" className="hover:text-blue-600">
+          Blog
+        </Link>
       </nav>
       <main className="p-4">{children}</main>
     </div>

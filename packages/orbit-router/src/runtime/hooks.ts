@@ -1,4 +1,9 @@
-import { useRouterStateContext, useRouterDispatchContext, type NavigationState, type SearchParamValue } from "./router";
+import {
+  useRouterStateContext,
+  useRouterDispatchContext,
+  type NavigationState,
+  type SearchParamValue,
+} from "./router";
 import type { RegisteredRoutePaths, RegisteredRouteParams, ValidHref } from "../types";
 
 /**
@@ -12,7 +17,9 @@ import type { RegisteredRoutePaths, RegisteredRouteParams, ValidHref } from "../
  * // 従来互換
  * const params = useParams()
  */
-export function useParams<T extends RegisteredRoutePaths = never>(): [T] extends [never] ? Record<string, string> : RegisteredRouteParams[T & keyof RegisteredRouteParams] {
+export function useParams<T extends RegisteredRoutePaths = never>(): [T] extends [never]
+  ? Record<string, string>
+  : RegisteredRouteParams[T & keyof RegisteredRouteParams] {
   return useRouterStateContext().params as never;
 }
 
@@ -44,7 +51,9 @@ type SetSearchParams = (
  */
 export function useSearchParams(): [Record<string, string>, SetSearchParams];
 export function useSearchParams<T>(parse: (raw: Record<string, string>) => T): [T, SetSearchParams];
-export function useSearchParams<T>(parse?: (raw: Record<string, string>) => T): [Record<string, string> | T, SetSearchParams] {
+export function useSearchParams<T>(
+  parse?: (raw: Record<string, string>) => T,
+): [Record<string, string> | T, SetSearchParams] {
   const { search } = useRouterStateContext();
   const { setSearchParams } = useRouterDispatchContext();
 

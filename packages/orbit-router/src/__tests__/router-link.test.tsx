@@ -37,7 +37,12 @@ function UsersLayout({ children }: { children: React.ReactNode }) {
 const routes = [
   { path: "/", component: HomePage, layouts: [{ component: RootLayout }], guards: [] },
   { path: "/about", component: AboutPage, layouts: [{ component: RootLayout }], guards: [] },
-  { path: "/users/:id", component: UserPage, layouts: [{ component: RootLayout }, { component: UsersLayout }], guards: [] },
+  {
+    path: "/users/:id",
+    component: UserPage,
+    layouts: [{ component: RootLayout }, { component: UsersLayout }],
+    guards: [],
+  },
 ];
 
 describe("Router", () => {

@@ -20,50 +20,50 @@ pnpm add orbit-query
 ```
 
 ```tsx
-import { createQueryClient, QueryProvider } from "orbit-query"
+import { createQueryClient, QueryProvider } from "orbit-query";
 
-const queryClient = createQueryClient()
+const queryClient = createQueryClient();
 
 function App() {
   return (
     <QueryProvider client={queryClient}>
       <YourApp />
     </QueryProvider>
-  )
+  );
 }
 ```
 
 ## useQuery
 
 ```ts
-import { useQuery } from "orbit-query"
+import { useQuery } from "orbit-query";
 
 const { data, error, isLoading, isFetching, refetch } = useQuery({
   key: ["posts"],
-  fn: ({ signal }) => fetch("/api/posts", { signal }).then(r => r.json()),
-})
+  fn: ({ signal }) => fetch("/api/posts", { signal }).then((r) => r.json()),
+});
 ```
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `key` | `readonly unknown[]` | **Required.** Cache identifier |
-| `fn` | `(ctx: { signal: AbortSignal }) => Promise<T>` | **Required.** Fetch function |
-| `staleTime` | `number` | Time (ms) to consider cache fresh |
-| `refetchInterval` | `number` | Auto-refetch interval (ms) |
-| `enabled` | `boolean` | Set `false` to disable automatic fetching |
+| Option            | Type                                           | Description                               |
+| ----------------- | ---------------------------------------------- | ----------------------------------------- |
+| `key`             | `readonly unknown[]`                           | **Required.** Cache identifier            |
+| `fn`              | `(ctx: { signal: AbortSignal }) => Promise<T>` | **Required.** Fetch function              |
+| `staleTime`       | `number`                                       | Time (ms) to consider cache fresh         |
+| `refetchInterval` | `number`                                       | Auto-refetch interval (ms)                |
+| `enabled`         | `boolean`                                      | Set `false` to disable automatic fetching |
 
 ## useMutation
 
 ```ts
-import { useMutation } from "orbit-query"
+import { useMutation } from "orbit-query";
 
 const { mutate, isSubmitting, error } = useMutation({
   fn: (input: { title: string }) =>
     fetch("/api/posts", { method: "POST", body: JSON.stringify(input) }),
   invalidate: ["posts"],
-})
+});
 
-await mutate({ title: "Hello" })
+await mutate({ title: "Hello" });
 ```
 
 On success, caches matching the `invalidate` prefix are automatically cleared, triggering related `useQuery` hooks to refetch.
@@ -74,36 +74,36 @@ Wrap queries and mutations in custom hooks inside `hooks.ts`:
 
 ```ts
 // routes/posts/hooks.ts
-import { useQuery, useMutation } from "orbit-query"
-import { getPosts, createPost } from "./server"
+import { useQuery, useMutation } from "orbit-query";
+import { getPosts, createPost } from "./server";
 
 export function usePosts() {
   return useQuery({
     key: ["posts"],
     fn: ({ signal }) => getPosts(signal),
-  })
+  });
 }
 
 export function useCreatePost() {
   return useMutation({
     fn: (data: PostInput) => createPost(data),
     invalidate: ["posts"],
-  })
+  });
 }
 ```
 
 ## QueryClient API
 
 ```ts
-const queryClient = createQueryClient()
+const queryClient = createQueryClient();
 ```
 
-| Method | Description |
-|--------|-------------|
-| `fetchQuery(options)` | Fetch data and store in cache |
-| `invalidate(key)` | Invalidate caches by prefix match |
-| `getQueryData(key)` | Read cache directly |
-| `setQueryData(key, data)` | Write cache directly |
+| Method                    | Description                       |
+| ------------------------- | --------------------------------- |
+| `fetchQuery(options)`     | Fetch data and store in cache     |
+| `invalidate(key)`         | Invalidate caches by prefix match |
+| `getQueryData(key)`       | Read cache directly               |
+| `setQueryData(key, data)` | Write cache directly              |
 
 ## License
 

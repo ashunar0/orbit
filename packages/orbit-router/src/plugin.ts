@@ -65,7 +65,10 @@ function toImportPath(p: string): string {
   return p.split(path.sep).join("/");
 }
 
-function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof scanRoutes>>): string {
+function generateRouteModule({
+  routes,
+  notFoundPath,
+}: Awaited<ReturnType<typeof scanRoutes>>): string {
   const imports: string[] = [];
   const lazyDecls: string[] = [];
   const routeDefs: string[] = [];
@@ -113,7 +116,9 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
 
   for (const [i, route] of routes.entries()) {
     const componentName = `Route${i}`;
-    lazyDecls.push(`const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`);
+    lazyDecls.push(
+      `const ${componentName} = lazy(() => import("${toImportPath(route.filePath)}"));`,
+    );
 
     const layoutModNames = route.layouts.map((l) => getLayoutModName(l.layoutPath));
     const layoutEntries = route.layouts.map((l, idx) => {
@@ -158,8 +163,12 @@ function generateRouteModule({ routes, notFoundPath }: Awaited<ReturnType<typeof
     routeDefs.push(`  { ${fields.join(", ")} }`);
   }
 
-  const notFoundImport = notFoundPath ? `import NotFound from "${toImportPath(notFoundPath)}";` : "";
-  const notFoundExport = notFoundPath ? "export { NotFound };" : "export const NotFound = undefined;";
+  const notFoundImport = notFoundPath
+    ? `import NotFound from "${toImportPath(notFoundPath)}";`
+    : "";
+  const notFoundExport = notFoundPath
+    ? "export { NotFound };"
+    : "export const NotFound = undefined;";
 
   return `import { lazy } from "react";
 ${imports.join("\n")}
@@ -227,7 +236,7 @@ export function generateRouteTypesContent(routes: RouteEntry[]): string {
       lines.push(`  "${route.path}": Record<string, never>;`);
     }
   }
-  lines.push("}")
+  lines.push("}");
   lines.push("");
 
   // orbit-router モジュールの型を拡張

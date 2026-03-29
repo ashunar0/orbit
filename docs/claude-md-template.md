@@ -157,7 +157,7 @@ const { mutate: create } = useCreateTask();
     <input {...form.register("title")} />
     {form.fieldError("title") && <p>{form.fieldError("title")}</p>}
   </div>
-</Form>
+</Form>;
 ```
 
 ## ルーティング規約
@@ -186,20 +186,20 @@ routes/tasks/[id]/page.tsx   → /tasks/:id
 
 ```tsx
 import {
-  useParams,        // ルートパラメータ: { id: "123" }
-  useSearchParams,  // クエリパラメータ（Zod バリデーション対応）
-  useNavigation,    // ナビゲーション状態: "idle" | "loading" | "submitting"
-  useNavigate,      // プログラム的遷移: navigate("/path") or navigate(-1)
-  Link,             // SPA リンク: <Link href="/about">About</Link>
+  useParams, // ルートパラメータ: { id: "123" }
+  useSearchParams, // クエリパラメータ（Zod バリデーション対応）
+  useNavigation, // ナビゲーション状態: "idle" | "loading" | "submitting"
+  useNavigate, // プログラム的遷移: navigate("/path") or navigate(-1)
+  Link, // SPA リンク: <Link href="/about">About</Link>
 } from "orbit-router";
 
 import {
-  useQuery,         // データ取得: useQuery({ key, fn })
-  useMutation,      // データ変更: useMutation({ fn, invalidate, onSuccess })
+  useQuery, // データ取得: useQuery({ key, fn })
+  useMutation, // データ変更: useMutation({ fn, invalidate, onSuccess })
 } from "orbit-query";
 
 import {
-  useForm,          // フォーム: useForm({ schema, defaultValues })
-  Form,             // フォームラッパー: <Form form={form} onSubmit={handler}>
+  useForm, // フォーム: useForm({ schema, defaultValues })
+  Form, // フォームラッパー: <Form form={form} onSubmit={handler}>
 } from "orbit-form";
 ```

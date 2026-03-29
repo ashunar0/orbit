@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z } from "zod";
 
 export const orderSchema = z
   .object({
@@ -20,20 +20,20 @@ export const orderSchema = z
   // Zod refine デモ: クロスフィールドバリデーション
   .refine(
     (data) => {
-      if (data.deliveryMethod === "shipping" && !data.address) return false
-      return true
+      if (data.deliveryMethod === "shipping" && !data.address) return false;
+      return true;
     },
     { path: ["address"], message: "配送の場合は住所が必須です" },
   )
   .refine(
     (data) => {
-      if (data.discountType === "percent" && data.discountValue > 100) return false
-      return true
+      if (data.discountType === "percent" && data.discountValue > 100) return false;
+      return true;
     },
     { path: ["discountValue"], message: "割引率は100%以下にしてください" },
-  )
+  );
 
-export type OrderInput = z.input<typeof orderSchema>
+export type OrderInput = z.input<typeof orderSchema>;
 
 export const defaultOrderValues: OrderInput = {
   customerName: "",
@@ -43,4 +43,4 @@ export const defaultOrderValues: OrderInput = {
   discountType: "none",
   discountValue: 0,
   tags: "",
-}
+};

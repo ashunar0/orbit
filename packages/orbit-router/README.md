@@ -27,22 +27,22 @@ pnpm add orbit-router
 
 ```ts
 // vite.config.ts
-import { defineConfig } from "vite"
-import react from "@vitejs/plugin-react"
-import { orbitRouter } from "orbit-router"
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { orbitRouter } from "orbit-router";
 
 export default defineConfig({
   plugins: [react(), orbitRouter()],
-})
+});
 ```
 
 ```tsx
 // src/app.tsx
-import { routes, NotFound } from "virtual:orbit-router/routes"
-import { Router } from "orbit-router"
+import { routes, NotFound } from "virtual:orbit-router/routes";
+import { Router } from "orbit-router";
 
 export function App() {
-  return <Router routes={routes} NotFound={NotFound} />
+  return <Router routes={routes} NotFound={NotFound} />;
 }
 ```
 
@@ -67,53 +67,48 @@ src/routes/
       page.tsx      → /users/:id
 ```
 
-| File | Purpose |
-|------|---------|
-| `page.tsx` | Page component (required for a route to exist) |
-| `layout.tsx` | Wraps child routes with `{children}` prop. Can also export a `guard` function |
-| `guard.ts` | Separate guard file (optional, takes priority over layout export) |
-| `loading.tsx` | Shown during initial page load |
-| `error.tsx` | Error boundary. Bubbles up to nearest parent if not present |
-| `not-found.tsx` | Custom 404 page (root level) |
+| File            | Purpose                                                                       |
+| --------------- | ----------------------------------------------------------------------------- |
+| `page.tsx`      | Page component (required for a route to exist)                                |
+| `layout.tsx`    | Wraps child routes with `{children}` prop. Can also export a `guard` function |
+| `guard.ts`      | Separate guard file (optional, takes priority over layout export)             |
+| `loading.tsx`   | Shown during initial page load                                                |
+| `error.tsx`     | Error boundary. Bubbles up to nearest parent if not present                   |
+| `not-found.tsx` | Custom 404 page (root level)                                                  |
 
 ## API
 
 ### Hooks
 
 ```tsx
-import {
-  useParams,
-  useSearchParams,
-  useNavigation,
-  useNavigate,
-} from "orbit-router"
+import { useParams, useSearchParams, useNavigation, useNavigate } from "orbit-router";
 
 // Type-safe params
-const { id } = useParams<"/users/:id">()
+const { id } = useParams<"/users/:id">();
 
 // Search params with optional parsing
 const [search, setSearch] = useSearchParams((raw) => ({
   page: Number(raw.page ?? 1),
   q: raw.q ?? "",
-}))
-setSearch({ page: 2 })    // merge into URL
-setSearch({ q: null })     // remove param
+}));
+setSearch({ page: 2 }); // merge into URL
+setSearch({ q: null }); // remove param
 
 // Navigation state
-const { state } = useNavigation() // "idle" | "loading"
+const { state } = useNavigation(); // "idle" | "loading"
 
 // Programmatic navigation
-const navigate = useNavigate()
-navigate("/users/1")
-navigate(-1) // history.back()
+const navigate = useNavigate();
+navigate("/users/1");
+navigate(-1); // history.back()
 ```
 
 ### Components
 
 ```tsx
-import { Link } from "orbit-router"
+import { Link } from "orbit-router";
 
-<Link href="/about">About</Link>
+<Link href="/about">About</Link>;
 ```
 
 ### Guards
@@ -122,17 +117,17 @@ Guards can be exported from `layout.tsx` (default) or placed in a separate `guar
 
 ```tsx
 // routes/admin/layout.tsx — guard lives with the layout (recommended for short guards)
-import type { GuardArgs } from "orbit-router"
-import { redirect } from "orbit-router"
+import type { GuardArgs } from "orbit-router";
+import { redirect } from "orbit-router";
 
 export async function guard({ signal }: GuardArgs) {
-  const session = await getSession({ signal })
-  if (!session) redirect("/login")
-  return true
+  const session = await getSession({ signal });
+  if (!session) redirect("/login");
+  return true;
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <div>{children}</div>
+  return <div>{children}</div>;
 }
 ```
 
@@ -140,8 +135,8 @@ For complex guards, extract to a separate file:
 
 ```ts
 // routes/admin/guard.ts — takes priority over layout export
-import type { GuardArgs } from "orbit-router"
-import { redirect } from "orbit-router"
+import type { GuardArgs } from "orbit-router";
+import { redirect } from "orbit-router";
 
 export default async function guard({ signal }: GuardArgs) {
   // complex auth logic...

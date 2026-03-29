@@ -67,7 +67,9 @@ function TriggerPage() {
   return (
     <div>
       <div data-testid="trigger-page">Trigger</div>
-      <button data-testid="nav-guarded" onClick={() => navigate("/guarded")}>Go Guarded</button>
+      <button data-testid="nav-guarded" onClick={() => navigate("/guarded")}>
+        Go Guarded
+      </button>
     </div>
   );
 }
@@ -84,9 +86,21 @@ const setSearchRoutes = [
 const guardRoutes = [
   { path: "/static", component: StaticPage, layouts: [], guards: [] },
   { path: "/trigger", component: TriggerPage, layouts: [], guards: [] },
-  { path: "/guarded", component: GuardedPage, layouts: [], guards: [fakeGuard], Loading: LoadingComp },
+  {
+    path: "/guarded",
+    component: GuardedPage,
+    layouts: [],
+    guards: [fakeGuard],
+    Loading: LoadingComp,
+  },
   { path: "/redirect-guard", component: GuardedPage, layouts: [], guards: [redirectGuard] },
-  { path: "/error-guard", component: GuardedPage, layouts: [], guards: [failingGuard], ErrorBoundary: ErrorComp },
+  {
+    path: "/error-guard",
+    component: GuardedPage,
+    layouts: [],
+    guards: [failingGuard],
+    ErrorBoundary: ErrorComp,
+  },
 ];
 
 describe("useSearchParams", () => {

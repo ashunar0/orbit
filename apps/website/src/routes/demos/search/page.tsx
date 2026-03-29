@@ -1,29 +1,29 @@
-import { Link, useSearchParams } from "orbit-router"
-import { useArticles, useArticleFilter, usePagination } from "./hooks"
+import { Link, useSearchParams } from "orbit-router";
+import { useArticles, useArticleFilter, usePagination } from "./hooks";
 
-const CATEGORIES = ["all", "tech", "design", "business"] as const
+const CATEGORIES = ["all", "tech", "design", "business"] as const;
 const CATEGORY_LABELS: Record<string, string> = {
   all: "すべて",
   tech: "テック",
   design: "デザイン",
   business: "ビジネス",
-}
+};
 
 export default function SearchDemo() {
   const [search, setSearch] = useSearchParams((raw) => ({
     q: raw.q ?? "",
     category: raw.category ?? "all",
     page: Number(raw.page ?? 1),
-  }))
+  }));
 
-  const { data: articles, isLoading, error } = useArticles()
-  const { filtered, totalCount } = useArticleFilter(articles ?? [], search.q, search.category)
-  const { paged, currentPage, totalPages } = usePagination(filtered, search.page)
+  const { data: articles, isLoading, error } = useArticles();
+  const { filtered, totalCount } = useArticleFilter(articles ?? [], search.q, search.category);
+  const { paged, currentPage, totalPages } = usePagination(filtered, search.page);
 
-  const hasActiveFilters = search.q !== "" || search.category !== "all"
+  const hasActiveFilters = search.q !== "" || search.category !== "all";
 
-  if (isLoading) return <p className="text-gray-500">Loading articles...</p>
-  if (error) return <p className="text-red-600">Error: {error.message}</p>
+  if (isLoading) return <p className="text-gray-500">Loading articles...</p>;
+  if (error) return <p className="text-red-600">Error: {error.message}</p>;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -124,8 +124,10 @@ export default function SearchDemo() {
       )}
 
       <p className="mt-6 text-sm">
-        <Link href="/" className="text-gray-500 hover:underline">&larr; Home</Link>
+        <Link href="/" className="text-gray-500 hover:underline">
+          &larr; Home
+        </Link>
       </p>
     </div>
-  )
+  );
 }

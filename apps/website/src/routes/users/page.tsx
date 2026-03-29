@@ -20,7 +20,11 @@ export default function Users() {
         <tbody>
           {users.map((u) => (
             <tr key={u.id} className="border-b">
-              <td className="py-2"><Link href={`/users/${u.id}`} className="text-blue-600 hover:underline">{u.name}</Link></td>
+              <td className="py-2">
+                <Link href={`/users/${u.id}`} className="text-blue-600 hover:underline">
+                  {u.name}
+                </Link>
+              </td>
               <td className="py-2 text-gray-500">{u.email}</td>
             </tr>
           ))}

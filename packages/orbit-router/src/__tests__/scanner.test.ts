@@ -79,9 +79,7 @@ describe("scanRoutes", () => {
     expect(userRoute!.layouts).toHaveLength(2);
     // First layout should be root, second should be users
     expect(userRoute!.layouts[0].layoutPath).toContain(path.join("routes", "layout.tsx"));
-    expect(userRoute!.layouts[1].layoutPath).toContain(
-      path.join("routes", "users", "layout.tsx"),
-    );
+    expect(userRoute!.layouts[1].layoutPath).toContain(path.join("routes", "users", "layout.tsx"));
   });
 
   it("handles .ts extension for page files", async () => {

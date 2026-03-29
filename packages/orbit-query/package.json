@@ -2,6 +2,14 @@
   "name": "orbit-query",
   "version": "0.1.1",
   "description": "Data fetching and caching for React — designed for the AI era.",
+  "keywords": [
+    "cache",
+    "data-fetching",
+    "orbit",
+    "query",
+    "react",
+    "react-compiler"
+  ],
   "license": "MIT",
   "author": "ashunar0",
   "repository": {
@@ -9,18 +17,11 @@
     "url": "https://github.com/ashunar0/orbit",
     "directory": "packages/orbit-query"
   },
-  "keywords": [
-    "react",
-    "query",
-    "cache",
-    "data-fetching",
-    "orbit",
-    "react-compiler"
-  ],
   "files": [
     "dist"
   ],
   "type": "module",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -28,7 +29,6 @@
     },
     "./package.json": "./package.json"
   },
-  "types": "./dist/index.d.mts",
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
@@ -37,6 +37,7 @@
     "release": "bumpp",
     "prepublishOnly": "pnpm run build"
   },
+  "dependencies": {},
   "devDependencies": {
     "@testing-library/react": "catalog:",
     "@types/node": "^25.5.0",
@@ -54,6 +55,5 @@
   "peerDependencies": {
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
-  },
-  "dependencies": {}
+  }
 }

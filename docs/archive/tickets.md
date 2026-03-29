@@ -27,6 +27,7 @@
 ## Phase 2: 型安全なデータフェッチ
 
 ### 設計方針（確定）
+
 - loader/action は別ファイル（`loader.ts` / `action.ts`）— 推奨パス（convention over configuration）
 - 型の接続は `useLoaderData<typeof loader>()` + `import type`
 - Zod スキーマは loader.ts / action.ts にコロケーション
@@ -34,6 +35,7 @@
 - 既存ライブラリ（React Hook Form, SWR 等）との互換性あり
 
 ### ✅ 完了
+
 - [x] **P2-01**: scanner 拡張 — `loader.ts` / `action.ts` / `loading.tsx` / `error.tsx` の検出
 - [x] **P2-02**: plugin 拡張 — 仮想モジュール生成に loader/action/loading/error を追加
 - [x] **P2-03**: router 拡張 — loader 呼び出し + loading/error 表示の仕組み

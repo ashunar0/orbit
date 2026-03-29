@@ -31,6 +31,7 @@ useNavigate(): (to: string | number, options?: { replace?: boolean }) => void
 - Breaking change なし（既存の `navigate("/path")` はそのまま動く）
 
 **変更ファイル:**
+
 - `packages/orbit-router/src/runtime/router.tsx` — `navigate` 関数の実装 + `RouterDispatchContextValue` の型
 - `packages/orbit-router/src/runtime/hooks.ts` — `useNavigate` の返り値の型
 
@@ -48,7 +49,7 @@ function MyPage() {
   useEffect(() => {
     if (!user) navigate("/login");
   }, [user]);
-  return <div>マイページの中身</div>;  // ← 未認証でも一瞬見える
+  return <div>マイページの中身</div>; // ← 未認証でも一瞬見える
 }
 ```
 
@@ -66,22 +67,22 @@ CSR アプリでガードを入れられるポイントは2箇所：
   → UI 描画
 ```
 
-| | ① loader の中 | ② layout の中 |
-|---|---|---|
-| タイミング | 描画の**前** | 描画の**中** |
-| 止められるもの | データ取得 + 描画 | 描画だけ |
-| 書き方 | `throw redirect()` | `if (!user) return <Navigate>` |
+|                | ① loader の中      | ② layout の中                  |
+| -------------- | ------------------ | ------------------------------ |
+| タイミング     | 描画の**前**       | 描画の**中**                   |
+| 止められるもの | データ取得 + 描画  | 描画だけ                       |
+| 書き方         | `throw redirect()` | `if (!user) return <Navigate>` |
 
 ※ Next.js のミドルウェア（サーバーで実行）は CSR では存在しないレイヤー。将来 SSR（Cloudflare Workers）を実装したら使えるようになる。
 
 #### 他フレームワークのアプローチ比較
 
-| パターン | フレームワーク | 方式 | CSR との相性 |
-|---|---|---|---|
-| throw redirect | Remix / React Router v7 | loader 内で throw | 良い |
-| beforeLoad | TanStack Router | 専用フック（loader と分離） | 良い |
-| ミドルウェア | Next.js | サーバー側で実行 | SSR 向き |
-| ナビゲーションガード | Vue Router | `router.beforeEach()` | 良い |
+| パターン             | フレームワーク          | 方式                        | CSR との相性 |
+| -------------------- | ----------------------- | --------------------------- | ------------ |
+| throw redirect       | Remix / React Router v7 | loader 内で throw           | 良い         |
+| beforeLoad           | TanStack Router         | 専用フック（loader と分離） | 良い         |
+| ミドルウェア         | Next.js                 | サーバー側で実行            | SSR 向き     |
+| ナビゲーションガード | Vue Router              | `router.beforeEach()`       | 良い         |
 
 #### 設計の検討過程
 
@@ -180,10 +181,10 @@ guard ではその元データに直接アクセスすればよい。
 
 #### UIガードとの関係
 
-| レイヤー | 役割 | 必要性 |
-|---|---|---|
-| guard（loader の前） | データ取得 + 描画を丸ごとブロック | 推奨 |
-| layout の `<AuthGuard>`（描画時） | UI レベルのフォールバック | 任意 |
+| レイヤー                          | 役割                              | 必要性 |
+| --------------------------------- | --------------------------------- | ------ |
+| guard（loader の前）              | データ取得 + 描画を丸ごとブロック | 推奨   |
+| layout の `<AuthGuard>`（描画時） | UI レベルのフォールバック         | 任意   |
 
 セキュリティは API 側（サーバー）の責務。フロントのガードはあくまで UX のため。
 
@@ -208,15 +209,15 @@ guard ではその元データに直接アクセスすればよい。
 // 現状: react-hook-form から JSON が来るのに FormData に詰め替えが必要
 const onSubmit = (data) => {
   const fd = new FormData();
-  fd.set("email", data.email);      // JSON → FormData（無駄）
+  fd.set("email", data.email); // JSON → FormData（無駄）
   fd.set("password", data.password);
   submit(fd);
 };
 
 // action 側でもまた取り出す
 export const action = async ({ formData }) => {
-  const email = formData.get("email") as string;  // FormData → string（無駄）
-  await signIn(email, password);                   // API は JSON を期待
+  const email = formData.get("email") as string; // FormData → string（無駄）
+  await signIn(email, password); // API は JSON を期待
 };
 ```
 
@@ -230,18 +231,18 @@ Remix / React Router v7 が FormData をデフォルトにしている影響。R
 
 orbit-router は CSR 専用（JavaScript 前提）のため、progressive enhancement のメリットがない：
 
-| | SSR（Remix 等） | CSR（orbit-router） |
-|---|---|---|
-| JS なしで動く？ | `<form>` が FormData で送信 → 動く | アプリ自体が動かない |
-| FormData の価値 | Web 標準としての強さ | ファイルアップロード時のみ |
+|                 | SSR（Remix 等）                    | CSR（orbit-router）        |
+| --------------- | ---------------------------------- | -------------------------- |
+| JS なしで動く？ | `<form>` が FormData で送信 → 動く | アプリ自体が動かない       |
+| FormData の価値 | Web 標準としての強さ               | ファイルアップロード時のみ |
 
 #### 他フレームワークの比較
 
-| フレームワーク | デフォルト | 理由 |
-|---|---|---|
-| Remix / RR v7 | FormData（JSON はオプション） | Web 標準 + progressive enhancement |
-| Next.js | JSON（Server Actions は関数呼び出し） | SSR 前提、FormData の概念が出ない |
-| TanStack Router | action の仕組みなし（自前 fetch） | 実質 JSON（TanStack Query と併用） |
+| フレームワーク  | デフォルト                            | 理由                               |
+| --------------- | ------------------------------------- | ---------------------------------- |
+| Remix / RR v7   | FormData（JSON はオプション）         | Web 標準 + progressive enhancement |
+| Next.js         | JSON（Server Actions は関数呼び出し） | SSR 前提、FormData の概念が出ない  |
+| TanStack Router | action の仕組みなし（自前 fetch）     | 実質 JSON（TanStack Query と併用） |
 
 CSR 専用のフレームワークは JSON 寄りの選択をしている。
 
@@ -295,11 +296,11 @@ export const action = async ({ formData, params, search }) => {
 
 ### 変更ファイル
 
-| ファイル | 変更内容 |
-|---|---|
+| ファイル             | 変更内容                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
 | `runtime/router.tsx` | `submitAction` の引数を `FormData \| object` に拡張。action 呼び出し時に `data` / `formData` を振り分け |
-| `runtime/hooks.ts` | `useSubmit` の返り値の型を更新 |
-| `client.d.ts` | action の引数型に `data` を追加 |
+| `runtime/hooks.ts`   | `useSubmit` の返り値の型を更新                                                                          |
+| `client.d.ts`        | action の引数型に `data` を追加                                                                         |
 
 ---
 
@@ -364,11 +365,11 @@ if (actionData?.error) {
 
 ## 優先度マトリクス
 
-| # | 改善点 | 難易度 | インパクト | 状態 |
-|---|--------|--------|------------|------|
-| 1 | navigate に数値 + replace 対応 | 低 | 高（実際にバグ） | ✅ 実装済み |
-| 2 | guard + redirect（layout.tsx 方式） | 中 | 高（認証フロー改善） | ✅ 実装済み |
-| 3 | action の JSON 対応 + `<Form>` | 中 | 中（API の幅拡大） | ✅ 実装済み |
-| 4 | ネスト loader データ | 高 | 中（将来の拡張性） | ✅ 実装済み |
-| 5 | HMR 改善 | 中 | 中（DX 向上） | ✅ 実装済み |
-| 7 | action エラーの統一ハンドリング | 低 | 中（`<Form>` のエラー対応） | ✅ 実装済み |
+| #   | 改善点                              | 難易度 | インパクト                  | 状態        |
+| --- | ----------------------------------- | ------ | --------------------------- | ----------- |
+| 1   | navigate に数値 + replace 対応      | 低     | 高（実際にバグ）            | ✅ 実装済み |
+| 2   | guard + redirect（layout.tsx 方式） | 中     | 高（認証フロー改善）        | ✅ 実装済み |
+| 3   | action の JSON 対応 + `<Form>`      | 中     | 中（API の幅拡大）          | ✅ 実装済み |
+| 4   | ネスト loader データ                | 高     | 中（将来の拡張性）          | ✅ 実装済み |
+| 5   | HMR 改善                            | 中     | 中（DX 向上）               | ✅ 実装済み |
+| 7   | action エラーの統一ハンドリング     | 低     | 中（`<Form>` のエラー対応） | ✅ 実装済み |

@@ -59,14 +59,23 @@ export default function FormDemo() {
         </fieldset>
 
         <div className="flex items-center gap-3">
-          <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700">Submit</button>
-          <button type="button" onClick={() => form.reset()} className="border border-gray-300 px-4 py-1.5 rounded text-sm hover:bg-gray-50">Reset</button>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700"
+          >
+            Submit
+          </button>
+          <button
+            type="button"
+            onClick={() => form.reset()}
+            className="border border-gray-300 px-4 py-1.5 rounded text-sm hover:bg-gray-50"
+          >
+            Reset
+          </button>
           {form.isDirty && <span className="text-amber-600 text-sm">変更あり</span>}
         </div>
 
-        {form.errors._root && (
-          <p className="text-red-600 text-sm">{form.errors._root}</p>
-        )}
+        {form.errors._root && <p className="text-red-600 text-sm">{form.errors._root}</p>}
       </form>
 
       {submittedData && (
@@ -77,7 +86,9 @@ export default function FormDemo() {
       )}
 
       <p className="mt-6 text-sm">
-        <Link href="/" className="text-gray-500 hover:underline">&larr; Home</Link>
+        <Link href="/" className="text-gray-500 hover:underline">
+          &larr; Home
+        </Link>
       </p>
     </div>
   );
@@ -102,11 +113,13 @@ function FormField({
     <div>
       <label className="block text-sm">
         {label}
-        <input {...field.props} value={String(field.props.value ?? "")} className="mt-1 w-full border rounded px-3 py-1.5 text-sm" />
+        <input
+          {...field.props}
+          value={String(field.props.value ?? "")}
+          className="mt-1 w-full border rounded px-3 py-1.5 text-sm"
+        />
       </label>
-      {field.touched && field.error && (
-        <span className="text-red-500 text-xs">{field.error}</span>
-      )}
+      {field.touched && field.error && <span className="text-red-500 text-xs">{field.error}</span>}
     </div>
   );
 }
@@ -150,9 +163,7 @@ function AddressField({ form }: { form: FormType }) {
           className="mt-1 w-full border rounded px-3 py-1.5 text-sm disabled:bg-gray-100"
         />
       </label>
-      {field.touched && field.error && (
-        <span className="text-red-500 text-xs">{field.error}</span>
-      )}
+      {field.touched && field.error && <span className="text-red-500 text-xs">{field.error}</span>}
     </div>
   );
 }
@@ -200,9 +211,7 @@ function DiscountValueField({ form }: { form: FormType }) {
           className="mt-1 w-30 border rounded px-3 py-1.5 text-sm disabled:bg-gray-100"
         />
       </label>
-      {field.touched && field.error && (
-        <span className="text-red-500 text-xs">{field.error}</span>
-      )}
+      {field.touched && field.error && <span className="text-red-500 text-xs">{field.error}</span>}
     </div>
   );
 }

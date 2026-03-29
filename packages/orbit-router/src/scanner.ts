@@ -7,7 +7,7 @@ export interface LayoutInfo {
   /** 同ディレクトリの error.tsx のフルパス（存在する場合） */
   errorPath?: string;
   /** guard のソース: "layout" = layout.tsx 内の export guard、パス文字列 = 独立 guard.ts */
-  guardSource?: "layout" | string;
+  guardSource?: string;
 }
 
 export interface RouteEntry {
@@ -141,7 +141,9 @@ function layoutExportsGuard(layoutPath: string): boolean {
   try {
     const content = fs.readFileSync(layoutPath, "utf-8");
     // export function guard / export async function guard / export const guard / export { guard }
-    return /export\s+(async\s+)?function\s+guard\b|export\s+(const|let|var)\s+guard\b|export\s*\{[^}]*\bguard\b/.test(content);
+    return /export\s+(async\s+)?function\s+guard\b|export\s+(const|let|var)\s+guard\b|export\s*\{[^}]*\bguard\b/.test(
+      content,
+    );
   } catch {
     return false;
   }

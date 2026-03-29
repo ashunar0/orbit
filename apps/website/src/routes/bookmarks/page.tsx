@@ -1,16 +1,22 @@
-import { Link } from "orbit-router"
-import { useBookmarks, useTags, useBookmarkSearch, useDeleteBookmark, filterBookmarks } from "./hooks"
+import { Link } from "orbit-router";
+import {
+  useBookmarks,
+  useTags,
+  useBookmarkSearch,
+  useDeleteBookmark,
+  filterBookmarks,
+} from "./hooks";
 
 export default function Bookmarks() {
-  const [search, setSearch] = useBookmarkSearch()
-  const { data: bookmarks, isLoading, error } = useBookmarks()
-  const { data: tags } = useTags()
-  const { mutate: remove } = useDeleteBookmark()
+  const [search, setSearch] = useBookmarkSearch();
+  const { data: bookmarks, isLoading, error } = useBookmarks();
+  const { data: tags } = useTags();
+  const { mutate: remove } = useDeleteBookmark();
 
-  const filtered = filterBookmarks(bookmarks ?? [], search.q, search.tag)
+  const filtered = filterBookmarks(bookmarks ?? [], search.q, search.tag);
 
-  if (isLoading) return <p className="text-gray-500">Loading bookmarks...</p>
-  if (error) return <p className="text-red-600">Error: {error.message}</p>
+  if (isLoading) return <p className="text-gray-500">Loading bookmarks...</p>;
+  if (error) return <p className="text-red-600">Error: {error.message}</p>;
 
   return (
     <div className="max-w-2xl mx-auto p-4">
@@ -31,7 +37,9 @@ export default function Bookmarks() {
         >
           <option value="">All tags</option>
           {tags?.map((tag) => (
-            <option key={tag} value={tag}>{tag}</option>
+            <option key={tag} value={tag}>
+              {tag}
+            </option>
           ))}
         </select>
       </div>
@@ -44,7 +52,10 @@ export default function Bookmarks() {
           {filtered.map((b) => (
             <li key={b.id} className="border rounded-lg p-3">
               <div>
-                <Link href={`/bookmarks/${b.id}`} className="font-semibold text-blue-600 hover:underline">
+                <Link
+                  href={`/bookmarks/${b.id}`}
+                  className="font-semibold text-blue-600 hover:underline"
+                >
                   {b.title}
                 </Link>
               </div>
@@ -67,9 +78,13 @@ export default function Bookmarks() {
                 </div>
               )}
               <div className="mt-2 text-xs text-gray-400 space-x-2">
-                <Link href={`/bookmarks/${b.id}/edit`} className="hover:text-gray-600">Edit</Link>
+                <Link href={`/bookmarks/${b.id}/edit`} className="hover:text-gray-600">
+                  Edit
+                </Link>
                 <button
-                  onClick={() => { if (confirm("削除しますか？")) remove(b.id) }}
+                  onClick={() => {
+                    if (confirm("削除しますか？")) remove(b.id);
+                  }}
                   className="text-red-400 hover:text-red-600 cursor-pointer"
                 >
                   Delete
@@ -81,9 +96,13 @@ export default function Bookmarks() {
       )}
 
       <div className="mt-6 flex gap-3 text-sm">
-        <Link href="/bookmarks/new" className="text-blue-600 hover:underline">+ New Bookmark</Link>
-        <Link href="/" className="text-gray-500 hover:underline">&larr; Home</Link>
+        <Link href="/bookmarks/new" className="text-blue-600 hover:underline">
+          + New Bookmark
+        </Link>
+        <Link href="/" className="text-gray-500 hover:underline">
+          &larr; Home
+        </Link>
       </div>
     </div>
-  )
+  );
 }

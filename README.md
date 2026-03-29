@@ -6,11 +6,11 @@ A frontend toolkit for React. Routing, data fetching, and forms — unified with
 
 ## Packages
 
-| Package | Description | Version |
-|---------|-------------|---------|
-| [orbit-router](./packages/orbit-router/) | Directory-based router with typed params and links | v0.2.0 |
-| [orbit-query](./packages/orbit-query/) | Data fetching + caching (useQuery / useMutation) | v0.1.0 |
-| [orbit-form](./packages/orbit-form/) | React Compiler compatible forms with Zod validation | v0.1.4 |
+| Package                                  | Description                                         | Version |
+| ---------------------------------------- | --------------------------------------------------- | ------- |
+| [orbit-router](./packages/orbit-router/) | Directory-based router with typed params and links  | v0.2.0  |
+| [orbit-query](./packages/orbit-query/)   | Data fetching + caching (useQuery / useMutation)    | v0.1.0  |
+| [orbit-form](./packages/orbit-form/)     | React Compiler compatible forms with Zod validation | v0.1.4  |
 
 ## Why Orbit?
 
@@ -37,20 +37,20 @@ routes/bookmarks/
 ```tsx
 export default function Bookmarks() {
   // State — read from URL
-  const [search, setSearch] = useBookmarkSearch()
+  const [search, setSearch] = useBookmarkSearch();
 
   // Fetch — get data
-  const { data: bookmarks } = useBookmarks()
-  const { data: tags } = useTags()
+  const { data: bookmarks } = useBookmarks();
+  const { data: tags } = useTags();
 
   // Transform — filter & sort
-  const filtered = filterBookmarks(bookmarks ?? [], search.q, search.tag)
+  const filtered = filterBookmarks(bookmarks ?? [], search.q, search.tag);
 
   // Mutate — write operations
-  const { mutate: remove } = useDeleteBookmark()
+  const { mutate: remove } = useDeleteBookmark();
 
   // Render
-  return <div>...</div>
+  return <div>...</div>;
 }
 ```
 
@@ -71,13 +71,13 @@ One Vite plugin. Three packages. Everything works together.
 
 ```ts
 // vite.config.ts
-import { defineConfig } from "vite"
-import react from "@vitejs/plugin-react"
-import { orbitRouter } from "orbit-router"
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { orbitRouter } from "orbit-router";
 
 export default defineConfig({
   plugins: [react(), orbitRouter()],
-})
+});
 ```
 
 ## Quick Start
@@ -90,11 +90,11 @@ pnpm add orbit-router orbit-query orbit-form zod
 
 ```tsx
 // src/app.tsx
-import { Router } from "orbit-router"
-import { routes } from "virtual:orbit-router/routes"
+import { Router } from "orbit-router";
+import { routes } from "virtual:orbit-router/routes";
 
 export function App() {
-  return <Router routes={routes} />
+  return <Router routes={routes} />;
 }
 ```
 
@@ -119,32 +119,38 @@ Just drop files — routes appear automatically.
 ```ts
 // routes/users/server.ts
 export async function getUsers(): Promise<User[]> {
-  const res = await fetch("/api/users")
-  return res.json()
+  const res = await fetch("/api/users");
+  return res.json();
 }
 ```
 
 ```ts
 // routes/users/hooks.ts
-import { useQuery } from "orbit-query"
-import { getUsers } from "./server"
+import { useQuery } from "orbit-query";
+import { getUsers } from "./server";
 
 export function useUsers() {
   return useQuery({
     key: ["users"],
     fn: ({ signal }) => getUsers(signal),
-  })
+  });
 }
 ```
 
 ```tsx
 // routes/users/page.tsx
-import { useUsers } from "./hooks"
+import { useUsers } from "./hooks";
 
 export default function Users() {
-  const { data: users, isLoading } = useUsers()
-  if (isLoading) return <p>Loading...</p>
-  return <ul>{users?.map(u => <li key={u.id}>{u.name}</li>)}</ul>
+  const { data: users, isLoading } = useUsers();
+  if (isLoading) return <p>Loading...</p>;
+  return (
+    <ul>
+      {users?.map((u) => (
+        <li key={u.id}>{u.name}</li>
+      ))}
+    </ul>
+  );
 }
 ```
 
@@ -152,26 +158,26 @@ export default function Users() {
 
 ```ts
 // routes/users/schema.ts
-import { z } from "zod"
+import { z } from "zod";
 
 export const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
-})
+});
 
-export type UserInput = z.input<typeof userSchema>
+export type UserInput = z.input<typeof userSchema>;
 ```
 
 ```tsx
 // routes/users/new/page.tsx
-import { useForm, Form } from "orbit-form"
-import { userSchema } from "../schema"
+import { useForm, Form } from "orbit-form";
+import { userSchema } from "../schema";
 
 export default function NewUser() {
   const form = useForm({
     schema: userSchema,
     defaultValues: { name: "", email: "" },
-  })
+  });
 
   return (
     <Form form={form} onSubmit={handleSubmit}>
@@ -180,7 +186,7 @@ export default function NewUser() {
       <input {...form.register("email")} />
       <button type="submit">Create</button>
     </Form>
-  )
+  );
 }
 ```
 
@@ -214,17 +220,17 @@ const [search, setSearch] = useSearchParams(parseSearchParams)
 
 ## File Conventions
 
-| File | Purpose |
-|------|---------|
-| `page.tsx` | Page component |
-| `hooks.ts` | Custom hooks (one concern per hook) |
-| `server.ts` | Server-side data access (RPC-style plain functions) |
-| `schema.ts` | Zod schemas + type definitions |
-| `layout.tsx` | Layout wrapper (no data fetching). Can also export a `guard` function |
-| `guard.ts` | Access control (alternative to exporting guard from layout) |
-| `error.tsx` | Error boundary |
-| `loading.tsx` | Loading state |
-| `not-found.tsx` | 404 page |
+| File            | Purpose                                                               |
+| --------------- | --------------------------------------------------------------------- |
+| `page.tsx`      | Page component                                                        |
+| `hooks.ts`      | Custom hooks (one concern per hook)                                   |
+| `server.ts`     | Server-side data access (RPC-style plain functions)                   |
+| `schema.ts`     | Zod schemas + type definitions                                        |
+| `layout.tsx`    | Layout wrapper (no data fetching). Can also export a `guard` function |
+| `guard.ts`      | Access control (alternative to exporting guard from layout)           |
+| `error.tsx`     | Error boundary                                                        |
+| `loading.tsx`   | Loading state                                                         |
+| `not-found.tsx` | 404 page                                                              |
 
 ## Design Philosophy
 

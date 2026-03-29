@@ -20,23 +20,23 @@ pnpm add orbit-form zod
 ```
 
 ```tsx
-import { useForm, Form } from "orbit-form"
-import { z } from "zod"
+import { useForm, Form } from "orbit-form";
+import { z } from "zod";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
-})
+});
 
 export default function MyForm() {
   const form = useForm({
     schema,
     defaultValues: { name: "", email: "" },
-  })
+  });
 
   const handleSubmit = async (data: z.output<typeof schema>) => {
-    await saveUser(data)
-  }
+    await saveUser(data);
+  };
 
   return (
     <Form form={form} onSubmit={handleSubmit}>
@@ -50,35 +50,35 @@ export default function MyForm() {
         {form.isSubmitting ? "Saving..." : "Save"}
       </button>
     </Form>
-  )
+  );
 }
 ```
 
 ## useForm
 
 ```ts
-const form = useForm({ schema, defaultValues, dependencies })
+const form = useForm({ schema, defaultValues, dependencies });
 ```
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `schema` | `ZodType` | **Required.** Zod schema for validation |
-| `defaultValues` | `T \| undefined` | Initial values. `undefined` enables async loading mode |
-| `dependencies` | `Record<string, Function>` | Field change callbacks (e.g., reset dependent fields) |
+| Option          | Type                       | Description                                            |
+| --------------- | -------------------------- | ------------------------------------------------------ |
+| `schema`        | `ZodType`                  | **Required.** Zod schema for validation                |
+| `defaultValues` | `T \| undefined`           | Initial values. `undefined` enables async loading mode |
+| `dependencies`  | `Record<string, Function>` | Field change callbacks (e.g., reset dependent fields)  |
 
 ### Return value
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `register(name)` | `{ value, onChange, onBlur }` | Bind a field to an input element |
-| `fieldError(name)` | `string \| undefined` | Get validation error for a field |
-| `values` | `T` | Current form values |
-| `errors` | `Record<string, string>` | All validation errors |
-| `isDirty` | `boolean` | Whether any field has changed |
-| `isSubmitting` | `boolean` | Whether form is being submitted |
-| `submit(onSubmit)` | `(e?) => void` | Create a submit handler |
-| `reset(name?)` | `void` | Reset all fields or a specific field |
-| `store` | `FormStore \| null` | `null` while async default values are loading |
+| Property           | Type                          | Description                                   |
+| ------------------ | ----------------------------- | --------------------------------------------- |
+| `register(name)`   | `{ value, onChange, onBlur }` | Bind a field to an input element              |
+| `fieldError(name)` | `string \| undefined`         | Get validation error for a field              |
+| `values`           | `T`                           | Current form values                           |
+| `errors`           | `Record<string, string>`      | All validation errors                         |
+| `isDirty`          | `boolean`                     | Whether any field has changed                 |
+| `isSubmitting`     | `boolean`                     | Whether form is being submitted               |
+| `submit(onSubmit)` | `(e?) => void`                | Create a submit handler                       |
+| `reset(name?)`     | `void`                        | Reset all fields or a specific field          |
+| `store`            | `FormStore \| null`           | `null` while async default values are loading |
 
 ## Field Dependencies
 
@@ -90,10 +90,10 @@ const form = useForm({
   defaultValues,
   dependencies: {
     deliveryMethod: (value, form) => {
-      if (value === "pickup") form.setValue("address", "")
+      if (value === "pickup") form.setValue("address", "");
     },
   },
-})
+});
 ```
 
 ## Async Default Values
@@ -101,12 +101,12 @@ const form = useForm({
 When editing existing data, pass `undefined` initially and the actual values once loaded:
 
 ```ts
-const { data: user } = useUser(id)
+const { data: user } = useUser(id);
 
 const form = useForm({
   schema: userSchema,
   defaultValues: user ?? undefined, // null → undefined while loading
-})
+});
 ```
 
 The `<Form>` component renders nothing while `form.store` is `null`, preventing flickers.
@@ -117,17 +117,17 @@ Define form hooks in `hooks.ts`:
 
 ```ts
 // routes/users/hooks.ts
-import { useForm } from "orbit-form"
-import { userSchema, type UserInput } from "./schema"
+import { useForm } from "orbit-form";
+import { userSchema, type UserInput } from "./schema";
 
-const defaults: UserInput = { name: "", email: "" }
+const defaults: UserInput = { name: "", email: "" };
 
 export function useCreateUserForm() {
-  return useForm({ schema: userSchema, defaultValues: defaults })
+  return useForm({ schema: userSchema, defaultValues: defaults });
 }
 
 export function useEditUserForm(defaultValues: UserInput | undefined) {
-  return useForm({ schema: userSchema, defaultValues })
+  return useForm({ schema: userSchema, defaultValues });
 }
 ```
 

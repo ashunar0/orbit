@@ -11,19 +11,20 @@ export interface Register {
 export type RegisteredRoutePaths = Register extends { routePaths: infer T } ? T : string;
 
 /** 登録済みのルートパラメータマッピング。未登録なら Record<string, string> にフォールバック */
-export type RegisteredRouteParams = Register extends { routeParams: infer T } ? T : Record<string, Record<string, string>>;
+export type RegisteredRouteParams = Register extends { routeParams: infer T }
+  ? T
+  : Record<string, Record<string, string>>;
 
 /**
  * ルートパスのパラメータ部分（:param）を string に置換した型。
  * 例: "/users/:id" → "/users/${string}"
  * 静的ルートはそのまま返す。
  */
-type ResolvePathParams<T extends string> =
-  T extends `${infer Head}:${string}/${infer Rest}`
-    ? `${Head}${string}/${ResolvePathParams<Rest>}`
-    : T extends `${infer Head}:${string}`
-      ? `${Head}${string}`
-      : T;
+type ResolvePathParams<T extends string> = T extends `${infer Head}:${string}/${infer Rest}`
+  ? `${Head}${string}/${ResolvePathParams<Rest>}`
+  : T extends `${infer Head}:${string}`
+    ? `${Head}${string}`
+    : T;
 
 /** Link / useNavigate で使える href 型。動的パラメータは埋め込み済みの文字列を受け付ける */
 export type ValidHref = [RegisteredRoutePaths] extends [never]
@@ -41,7 +42,9 @@ export type ValidHref = [RegisteredRoutePaths] extends [never]
  * }
  */
 export type GuardArgs<T extends RegisteredRoutePaths = never> = {
-  params: [T] extends [never] ? Record<string, string> : RegisteredRouteParams[T & keyof RegisteredRouteParams];
+  params: [T] extends [never]
+    ? Record<string, string>
+    : RegisteredRouteParams[T & keyof RegisteredRouteParams];
   search: Record<string, string>;
   /** キャンセル用 AbortSignal — fetch に渡すとナビゲーション中断時にリクエストもキャンセルされる */
   signal: AbortSignal;

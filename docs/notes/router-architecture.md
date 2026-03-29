@@ -39,12 +39,11 @@ scanner の結果を JavaScript コードの文字列に変換する。
 import Route0 from "/path/to/routes/page.tsx";
 import Layout0 from "/path/to/routes/layout.tsx";
 
-export const routes = [
-  { path: "/", component: Route0, layouts: [Layout0] }
-];
+export const routes = [{ path: "/", component: Route0, layouts: [Layout0] }];
 ```
 
 Vite プラグインの4つのフック:
+
 - `configResolved` — プロジェクトルートを取得
 - `resolveId` — `"virtual:orbit-router/routes"` を自分が担当すると宣言
 - `load` — 仮想モジュールの中身（↑の JS コード）を返す
@@ -66,6 +65,7 @@ matchRoute("/users/:id", "/about")     → null
 ### 4. router.tsx — React の心臓部
 
 **状態管理:**
+
 - `useState` で `currentPath` を管理
 - `useEffect` で `popstate` イベント（ブラウザの戻る/進む）を監視
 - `navigate()` で `history.pushState` + `setCurrentPath`
@@ -76,6 +76,7 @@ matchRoute("/users/:id", "/about")     → null
 `currentPath`, `params`, `navigate` を Context で配布。Link や useParams がここから読む。
 
 **レイアウトのネスト描画:**
+
 ```
 layouts = [RootLayout, UsersLayout], Page = UserDetail の場合:
 
@@ -83,6 +84,7 @@ layouts = [RootLayout, UsersLayout], Page = UserDetail の場合:
 2. content = <UsersLayout>{content}</UsersLayout>     ← 内側
 3. content = <RootLayout>{content}</RootLayout>        ← 外側
 ```
+
 逆順ループでマトリョーシカ的に組み立てる。
 
 ### 5. link.tsx — SPA ナビゲーション
@@ -101,28 +103,28 @@ layouts = [RootLayout, UsersLayout], Page = UserDetail の場合:
 
 ### 1. マッチング速度
 
-| | Orbit Router | プロダクション |
-|--|-------------|-------------|
-| 方式 | 線形探索 O(n) | Trie 探索 O(depth) |
+|      | Orbit Router       | プロダクション     |
+| ---- | ------------------ | ------------------ |
+| 方式 | 線形探索 O(n)      | Trie 探索 O(depth) |
 | 影響 | 数百ルートまで誤差 | 数千ルートでも高速 |
 
 → **当面やらなくていい**。数百ルートになるまで体感差なし。
 
 ### 2. 描画コスト（一番インパクトが大きい）
 
-| | Orbit Router | プロダクション |
-|--|-------------|-------------|
-| 方式 | Router 全体を再レンダリング | 差分だけ更新 |
-| 例 | /users/1 → /users/2 で全部再描画 | UsersLayout はそのまま、子だけ更新 |
+|      | Orbit Router                     | プロダクション                     |
+| ---- | -------------------------------- | ---------------------------------- |
+| 方式 | Router 全体を再レンダリング      | 差分だけ更新                       |
+| 例   | /users/1 → /users/2 で全部再描画 | UsersLayout はそのまま、子だけ更新 |
 
 → **Phase 2 の loader 設計と一緒にやる**。レイアウト単位で state を分離すれば自然に入る。
 
 ### 3. バンドルサイズ
 
-| | Orbit Router | プロダクション |
-|--|-------------|-------------|
-| 方式 | 全ページ一括 static import | ページごとに dynamic import() |
-| 追加機能 | なし | Link の prefetch（先読み） |
+|          | Orbit Router               | プロダクション                |
+| -------- | -------------------------- | ----------------------------- |
+| 方式     | 全ページ一括 static import | ページごとに dynamic import() |
+| 追加機能 | なし                       | Link の prefetch（先読み）    |
 
 → **Phase 2 の後**。code splitting → prefetch の順。
 

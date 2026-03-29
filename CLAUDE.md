@@ -25,11 +25,11 @@ Orbit は React のためのフロントエンドツールキット。
 
 ターゲット：AI と一緒に開発する個人開発者・小規模チーム。
 
-| パッケージ | 説明 | 状態 |
-|-----------|------|------|
-| `orbit-router` | ディレクトリベースルーター | v0.2.2 |
-| `orbit-query` | データ取得 + キャッシュ | v0.1.1 |
-| `orbit-form` | React Compiler 互換フォーム | v0.1.6 |
+| パッケージ     | 説明                        | 状態   |
+| -------------- | --------------------------- | ------ |
+| `orbit-router` | ディレクトリベースルーター  | v0.2.2 |
+| `orbit-query`  | データ取得 + キャッシュ     | v0.1.1 |
+| `orbit-form`   | React Compiler 互換フォーム | v0.1.6 |
 
 ## リポジトリ構成
 
@@ -131,11 +131,11 @@ schema.ts  → searchParams / フォームの型とバリデーション
 
 ```tsx
 // page.tsx — 上から下に読めば処理フローがわかる
-const [search, setSearch] = useSearchParams(searchSchema)  // State
-const { data: tasks } = useTasks()                          // Fetch
-const filtered = useTaskFilter(tasks, search.q)             // Transform
-const { mutate: toggle } = useToggleTask()                  // Mutate
-return <div>...</div>                                        // Render
+const [search, setSearch] = useSearchParams(searchSchema); // State
+const { data: tasks } = useTasks(); // Fetch
+const filtered = useTaskFilter(tasks, search.q); // Transform
+const { mutate: toggle } = useToggleTask(); // Mutate
+return <div>...</div>; // Render
 ```
 
 ### orbit-form の使い方
