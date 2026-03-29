@@ -11,14 +11,6 @@ export default function Home() {
         <Link href="/about" className="text-blue-600 hover:underline">
           About
         </Link>
-        <a
-          href="https://github.com/asahi-and/orbit"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:underline"
-        >
-          GitHub
-        </a>
       </div>
     </div>
   );
