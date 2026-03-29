@@ -23,6 +23,11 @@ export interface MutationOptions<TInput = unknown, TOutput = unknown> {
   onSuccess?: (data: TOutput) => void;
 }
 
+/** dehydrate() が返すシリアライズ可能な形式 */
+export interface DehydratedState {
+  queries: Array<{ key: QueryKey; data: unknown; updatedAt: number }>;
+}
+
 export interface QueryClient {
   fetchQuery<T>(options: QueryOptions<T> & { signal?: AbortSignal }): Promise<T>;
   invalidate(key: unknown[]): void;
@@ -32,4 +37,8 @@ export interface QueryClient {
   getSnapshot<T>(key: QueryKey): QueryState<T>;
   ensureFetch<T>(options: QueryOptions<T>): void;
   getRefetch(key: QueryKey): () => void;
+  /** サーバーで取得したデータをキャッシュに復元する */
+  hydrate(state: DehydratedState): void;
+  /** キャッシュの成功データをシリアライズ可能な形式で取り出す */
+  dehydrate(): DehydratedState;
 }

@@ -1,4 +1,4 @@
-import type { QueryClient, QueryKey, QueryOptions, QueryState } from "./types";
+import type { DehydratedState, QueryClient, QueryKey, QueryOptions, QueryState } from "./types";
 
 const UNDEFINED_SENTINEL = "__orbit_undefined__";
 
@@ -225,6 +225,35 @@ export function createQueryClient(): QueryClient {
     // pure: レンダリング中に呼ばれるため Map を変更しない
     getRefetch(key: QueryKey): () => void {
       return peekEntry(key)?.refetchStable ?? noop;
+    },
+
+    hydrate(state: DehydratedState) {
+      for (const query of state.queries) {
+        const entry = getEntry(query.key);
+        // 既にデータがある場合はスキップ（クライアント側が優先）
+        if (entry.state.status === "success") continue;
+        entry.state = {
+          data: query.data,
+          error: null,
+          status: "success",
+          isFetching: false,
+        };
+        entry.updatedAt = query.updatedAt;
+      }
+    },
+
+    dehydrate(): DehydratedState {
+      const queries: DehydratedState["queries"] = [];
+      for (const [, entry] of cache) {
+        if (entry.state.status === "success") {
+          queries.push({
+            key: entry.key,
+            data: entry.state.data,
+            updatedAt: entry.updatedAt,
+          });
+        }
+      }
+      return { queries };
     },
   };
 

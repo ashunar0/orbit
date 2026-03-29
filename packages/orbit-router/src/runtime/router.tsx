@@ -77,11 +77,14 @@ interface RouterProps {
   routes: Route[];
   NotFound?: ComponentType;
   ErrorFallback?: ComponentType<{ error: Error }>;
+  /** SSR 時にサーバーから URL を渡す。省略時は window.location を使用。 */
+  url?: string;
 }
 
-export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
+export function Router({ routes, NotFound, ErrorFallback, url }: RouterProps) {
+  const isSSR = url !== undefined;
   const [committedUrl, setCommittedUrl] = useState(
-    () => window.location.pathname + window.location.search,
+    () => url ?? window.location.pathname + window.location.search,
   );
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const pendingUrlRef = useRef<string | null>(null);
@@ -125,18 +128,20 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
     [routes],
   );
 
-  // popstate 対応
+  // popstate 対応（SSR 時はスキップ）
   useEffect(() => {
+    if (isSSR) return;
     const onPopState = () => {
-      const url = window.location.pathname + window.location.search;
-      startNavigation(url);
+      const currentUrl = window.location.pathname + window.location.search;
+      startNavigation(currentUrl);
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [startNavigation]);
+  }, [startNavigation, isSSR]);
 
   const navigate = useCallback(
     (to: string | number, options?: { replace?: boolean }) => {
+      if (isSSR) return; // SSR 時はナビゲーション不可
       if (typeof to === "number") {
         window.history.go(to);
         return;
@@ -149,7 +154,7 @@ export function Router({ routes, NotFound, ErrorFallback }: RouterProps) {
       }
       startNavigation(to);
     },
-    [startNavigation],
+    [startNavigation, isSSR],
   );
 
   const setSearchParams = useCallback(
