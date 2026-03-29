@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync, cpSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, cpSync, writeFileSync, readFileSync, renameSync } from "node:fs";
 import { resolve, basename, join } from "node:path";
-import { createInterface } from "node:readline";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import * as p from "@clack/prompts";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const TEMPLATE_DIR = resolve(__dirname, "..", "template");
@@ -135,54 +135,83 @@ return <div>...</div>;                                     // Render
 - **YAGNI** — Don't build it until you need it
 `;
 
-// --- Helpers ---
+// --- Args ---
 
-function prompt(rl, question) {
-  return new Promise((resolve) => rl.question(question, resolve));
-}
-
-function select(rl, question, options) {
-  return new Promise((resolve) => {
-    console.log(question);
-    options.forEach((opt, i) => console.log(`  ${i + 1}. ${opt.label}`));
-    rl.question(`\n  Choose [1-${options.length}]: `, (answer) => {
-      const idx = parseInt(answer, 10) - 1;
-      resolve(options[idx]?.value ?? options[0].value);
-    });
-  });
+function parseArgs(argv) {
+  const positional = [];
+  const flags = {};
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--agent" && argv[i + 1]) {
+      flags.agent = argv[++i];
+    } else if (!argv[i].startsWith("-")) {
+      positional.push(argv[i]);
+    }
+  }
+  return { name: positional[0], ...flags };
 }
 
 // --- Main ---
 
 async function main() {
-  const args = process.argv.slice(2);
-  const projectName = args[0];
+  const args = parseArgs(process.argv.slice(2));
+  const isNonInteractive = args.name && args.agent;
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  p.intro("◎ create-orbit");
 
-  console.log();
-  console.log("  ◎ create-orbit");
-  console.log();
+  let options;
 
-  const name = projectName || (await prompt(rl, "  Project name: "));
-  if (!name) {
-    console.log("  Project name is required.");
-    rl.close();
-    process.exit(1);
+  if (isNonInteractive) {
+    // Non-interactive: all options from CLI flags
+    const valid = ["claude", "agents", "none"];
+    if (!valid.includes(args.agent)) {
+      p.cancel(`Invalid --agent value: "${args.agent}". Use: ${valid.join(", ")}`);
+      process.exit(1);
+    }
+    options = { name: args.name, agent: args.agent };
+    p.log.info(`Project: ${options.name}`);
+    p.log.info(`Agent: ${options.agent}`);
+  } else {
+    // Interactive: prompt for missing options
+    options = await p.group(
+      {
+        name: () =>
+          args.name
+            ? Promise.resolve(args.name)
+            : p.text({
+                message: "Project name",
+                placeholder: "my-orbit-app",
+                validate: (value) => {
+                  if (!value) return "Project name is required";
+                  if (existsSync(resolve(process.cwd(), value)))
+                    return `Directory "${value}" already exists`;
+                },
+              }),
+        agent: () =>
+          args.agent
+            ? Promise.resolve(args.agent)
+            : p.select({
+                message: "AI instructions file",
+                options: [
+                  { label: "CLAUDE.md", hint: "Claude Code", value: "claude" },
+                  { label: "AGENTS.md", hint: "Other AI tools", value: "agents" },
+                  { label: "None", value: "none" },
+                ],
+              }),
+      },
+      {
+        onCancel: () => {
+          p.cancel("Setup cancelled.");
+          process.exit(0);
+        },
+      },
+    );
   }
 
-  const agent = await select(rl, "\n  AI instructions file:", [
-    { label: "CLAUDE.md  (Claude Code)", value: "claude" },
-    { label: "AGENTS.md  (Other AI tools)", value: "agents" },
-    { label: "None", value: "none" },
-  ]);
-
-  rl.close();
-
+  const name = options.name;
   const targetDir = resolve(process.cwd(), name);
 
   if (existsSync(targetDir)) {
-    console.log(`\n  Directory "${name}" already exists.`);
+    p.cancel(`Directory "${name}" already exists.`);
     process.exit(1);
   }
 
@@ -191,10 +220,8 @@ async function main() {
 
   // Rename _gitignore to .gitignore (npm strips .gitignore from published packages)
   const gitignoreSrc = join(targetDir, "_gitignore");
-  const gitignoreDest = join(targetDir, ".gitignore");
   if (existsSync(gitignoreSrc)) {
-    const { renameSync } = await import("node:fs");
-    renameSync(gitignoreSrc, gitignoreDest);
+    renameSync(gitignoreSrc, join(targetDir, ".gitignore"));
   }
 
   // Update package.json name
@@ -210,19 +237,20 @@ async function main() {
   writeFileSync(htmlPath, html);
 
   // Write agent file
-  if (agent === "claude") {
+  if (options.agent === "claude") {
     writeFileSync(join(targetDir, "CLAUDE.md"), CLAUDE_MD);
-  } else if (agent === "agents") {
+  } else if (options.agent === "agents") {
     writeFileSync(join(targetDir, "AGENTS.md"), AGENTS_MD);
   }
 
   // Install dependencies
-  console.log();
-  console.log("  Installing dependencies...");
+  const s = p.spinner();
+  s.start("Installing dependencies...");
   try {
-    execSync("pnpm install", { cwd: targetDir, stdio: "inherit" });
+    execSync("pnpm install", { cwd: targetDir, stdio: "ignore" });
+    s.stop("Dependencies installed.");
   } catch {
-    console.log("  ⚠ pnpm install failed. Run it manually after setup.");
+    s.stop("Failed to install dependencies. Run pnpm install manually.");
   }
 
   // Git init
@@ -237,13 +265,9 @@ async function main() {
     // git not available, skip silently
   }
 
-  console.log();
-  console.log(`  ✓ Project created at ./${name}`);
-  console.log();
-  console.log("  Next steps:");
-  console.log(`    cd ${name}`);
-  console.log("    pnpm dev");
-  console.log();
+  p.note(`cd ${name}\npnpm dev`, "Next steps");
+
+  p.outro("Happy hacking!");
 }
 
 main().catch((err) => {
