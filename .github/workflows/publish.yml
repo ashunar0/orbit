@@ -39,5 +39,10 @@ jobs:
             exit 1
           fi
 
+      - name: Configure npm auth
+        run: echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > ~/.npmrc
+
       - run: pnpm publish --no-git-checks --provenance
         working-directory: packages/${{ steps.pkg.outputs.package }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
