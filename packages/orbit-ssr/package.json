@@ -1,0 +1,52 @@
+{
+  "name": "orbit-ssr",
+  "version": "0.1.0",
+  "description": "SSR plugin for Orbit — server-side rendering with Cloudflare Workers",
+  "keywords": [
+    "cloudflare-workers",
+    "hono",
+    "react",
+    "ssr",
+    "vite"
+  ],
+  "license": "MIT",
+  "author": "ashunar0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ashunar0/orbit-router",
+    "directory": "packages/orbit-ssr"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "typecheck": "tsc --noEmit",
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "hono": "^4.7.11"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "bumpp": "^11.0.1",
+    "typescript": "^5.9.3",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": ">=6.0.0"
+  }
+}

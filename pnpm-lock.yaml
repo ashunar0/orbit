@@ -109,6 +109,9 @@ importers:
       orbit-rpc:
         specifier: workspace:*
         version: link:../../packages/orbit-rpc
+      orbit-ssr:
+        specifier: workspace:*
+        version: link:../../packages/orbit-ssr
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -275,6 +278,28 @@ importers:
         version: '@voidzero-dev/vite-plus-test@0.1.12(@types/node@25.5.0)(happy-dom@20.8.4)(jiti@2.6.1)(typescript@5.9.3)(vite@8.0.1(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.2))(yaml@2.8.2)'
 
   packages/orbit-rpc:
+    dependencies:
+      hono:
+        specifier: ^4.7.11
+        version: 4.12.9
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.1.12
+        version: '@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(jiti@2.6.1)(typescript@5.9.3)(yaml@2.8.2)'
+    devDependencies:
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
+      bumpp:
+        specifier: ^11.0.1
+        version: 11.0.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.12(@types/node@25.5.0)(happy-dom@20.8.4)(jiti@2.6.1)(typescript@5.9.3)(vite@8.0.1(@types/node@25.5.0)(jiti@2.6.1)(yaml@2.8.2))(yaml@2.8.2)
+
+  packages/orbit-ssr:
     dependencies:
       hono:
         specifier: ^4.7.11
