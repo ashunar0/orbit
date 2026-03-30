@@ -9,7 +9,12 @@ import {
   updateBookmark,
   deleteBookmark,
 } from "./server";
-import { bookmarkSchema, parseSearchParams, type BookmarkInput } from "./schema";
+import {
+  bookmarkFormSchema,
+  parseSearchParams,
+  type Bookmark,
+  type BookmarkForm,
+} from "./schema";
 
 // ── Search Params ──
 
@@ -44,7 +49,7 @@ export function useTags() {
 
 export function useCreateBookmark() {
   return useMutation({
-    fn: (input: BookmarkInput) =>
+    fn: (input: BookmarkForm) =>
       createBookmark({
         ...input,
         tags: input.tags
@@ -60,7 +65,7 @@ export function useCreateBookmark() {
 
 export function useUpdateBookmark(id: string) {
   return useMutation({
-    fn: (input: BookmarkInput) =>
+    fn: (input: BookmarkForm) =>
       updateBookmark(id, {
         ...input,
         tags: input.tags
@@ -83,20 +88,20 @@ export function useDeleteBookmark() {
 
 // ── Forms ──
 
-const createDefaults: BookmarkInput = { url: "", title: "", description: "", tags: "" };
+const createDefaults: BookmarkForm = { url: "", title: "", description: "", tags: "" };
 
 export function useCreateBookmarkForm() {
-  return useForm({ schema: bookmarkSchema, defaultValues: createDefaults });
+  return useForm({ schema: bookmarkFormSchema, defaultValues: createDefaults });
 }
 
-export function useEditBookmarkForm(defaultValues: BookmarkInput | undefined) {
-  return useForm({ schema: bookmarkSchema, defaultValues });
+export function useEditBookmarkForm(defaultValues: BookmarkForm | undefined) {
+  return useForm({ schema: bookmarkFormSchema, defaultValues });
 }
 
 // ── Filtering (pure transform) ──
 
 export function filterBookmarks(
-  bookmarks: { id: string; url: string; title: string; tags: string[] }[],
+  bookmarks: Bookmark[],
   q: string,
   tag: string,
 ) {

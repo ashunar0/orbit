@@ -1,4 +1,4 @@
-import type { Bookmark } from "./schema";
+import type { Bookmark, BookmarkInput } from "./schema";
 
 // ── インメモリストア ──
 
@@ -56,12 +56,7 @@ export async function getAllTags(signal?: AbortSignal): Promise<string[]> {
 
 // ── Mutations ──
 
-export async function createBookmark(data: {
-  url: string;
-  title: string;
-  description: string;
-  tags: string[];
-}): Promise<Bookmark> {
+export async function createBookmark(data: BookmarkInput): Promise<Bookmark> {
   await delay(300);
   const bookmark: Bookmark = {
     id: String(nextId++),
@@ -74,7 +69,7 @@ export async function createBookmark(data: {
 
 export async function updateBookmark(
   id: string,
-  data: { url: string; title: string; description: string; tags: string[] },
+  data: BookmarkInput,
 ): Promise<Bookmark> {
   await delay(300);
   const bookmark = bookmarks.find((b) => b.id === id);

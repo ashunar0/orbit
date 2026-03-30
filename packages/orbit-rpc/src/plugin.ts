@@ -15,6 +15,8 @@ export interface OrbitRpcConfig {
  * 2つの仕事をする:
  * 1. クライアント側: server.ts の import を HTTP fetch スタブに差し替え
  * 2. dev サーバー: /rpc/* リクエストを受けて server.ts の関数を実行
+ *
+ * schema.ts に Zod スキーマがあれば、自動でバリデーションを適用する。
  */
 const VIRTUAL_SERVER_ID = "virtual:orbit-rpc/server";
 const RESOLVED_VIRTUAL_SERVER_ID = `\0${VIRTUAL_SERVER_ID}`;
@@ -85,13 +87,15 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
       configureServer(server: ViteDevServer) {
         const routesPath = path.resolve(root, routesDir);
 
-        // server.ts の追加・削除を監視
+        // server.ts / schema.ts の追加・削除を監視
         const onFileChange = async (file: string) => {
           if (!file.startsWith(routesPath)) return;
-          if (!file.endsWith("/server.ts")) return;
+          if (!file.endsWith("/server.ts") && !file.endsWith("/schema.ts"))
+            return;
           serverModules = await scanServerModules(root, routesDir);
         };
         server.watcher.on("add", onFileChange);
+        server.watcher.on("change", onFileChange);
         server.watcher.on("unlink", onFileChange);
 
         // RPC リクエストハンドラ
@@ -137,7 +141,9 @@ function generateClientStub(mod: ServerModule, rpcBase: string): string {
   for (const fn of mod.functions) {
     const endpoint = `${rpcBase}${mod.routePrefix}/${fn.name}`;
     lines.push(`export async function ${fn.name}(...args) {`);
-    lines.push(`  const signal = args[args.length - 1] instanceof AbortSignal ? args.pop() : undefined;`);
+    lines.push(
+      `  const signal = args[args.length - 1] instanceof AbortSignal ? args.pop() : undefined;`,
+    );
     lines.push(`  const hasArgs = args.length > 0;`);
     lines.push(`  const res = await fetch("${endpoint}", {`);
     lines.push(`    method: "POST",`);
@@ -148,8 +154,12 @@ function generateClientStub(mod: ServerModule, rpcBase: string): string {
     lines.push(`    } : {}),`);
     lines.push(`  });`);
     lines.push(`  if (!res.ok) {`);
-    lines.push(`    const body = await res.json().catch(() => ({}));`);
-    lines.push(`    throw new Error(body.error || \`RPC error: \${res.status}\`);`);
+    lines.push(
+      `    const body = await res.json().catch(() => ({}));`,
+    );
+    lines.push(
+      `    throw new Error(body.error || \`RPC error: \${res.status}\`);`,
+    );
     lines.push(`  }`);
     lines.push(`  const text = await res.text();`);
     lines.push(`  return text ? JSON.parse(text) : undefined;`);
@@ -174,6 +184,8 @@ class RpcError extends Error {
  *
  * URL: POST /rpc/{routePrefix}/{functionName}
  * Body: JSON（関数の引数）
+ *
+ * schema.ts に Zod スキーマがあれば、引数をバリデーションしてから関数を実行する。
  */
 async function handleRpcRequest(
   server: ViteDevServer,
@@ -215,10 +227,58 @@ async function handleRpcRequest(
 
   // リクエストボディを読み取り（引数は配列で送られる）
   const body = await readBody(req);
-  const args = body ? JSON.parse(body) : [];
+  const args: unknown[] = body ? JSON.parse(body) : [];
+
+  // schema.ts があれば Zod バリデーションを適用
+  const validatedArgs = await validateArgs(
+    args,
+    fnDef,
+    mod,
+    server,
+  );
 
   // 関数実行
-  return fn(...args);
+  return fn(...validatedArgs);
+}
+
+/**
+ * 各引数を対応する Zod スキーマでバリデーションする。
+ * スキーマが紐付いていない引数はそのまま通す。
+ */
+async function validateArgs(
+  args: unknown[],
+  fnDef: { params: Array<{ schemaName?: string }> },
+  mod: ServerModule,
+  server: ViteDevServer,
+): Promise<unknown[]> {
+  // スキーマを使う引数があるか確認
+  const hasValidation = fnDef.params.some((p) => p.schemaName);
+  if (!hasValidation || !mod.schemaFilePath) return args;
+
+  // schema.ts を動的ロード
+  const schemaModule = await server.ssrLoadModule(mod.schemaFilePath);
+
+  const validated = [...args];
+  for (let i = 0; i < fnDef.params.length && i < args.length; i++) {
+    const param = fnDef.params[i];
+    if (!param.schemaName) continue;
+
+    const schema = schemaModule[param.schemaName];
+    if (schema && typeof schema.parse === "function") {
+      try {
+        validated[i] = schema.parse(args[i]);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Validation failed";
+        throw new RpcError(
+          `Validation error on "${param.name}": ${message}`,
+          400,
+        );
+      }
+    }
+  }
+
+  return validated;
 }
 
 /**
@@ -226,6 +286,8 @@ async function handleRpcRequest(
  *
  * import app from "virtual:orbit-rpc/server" で使える。
  * Cloudflare Workers の場合は export default app; するだけ。
+ *
+ * schema.ts に Zod スキーマがあれば、.parse() によるバリデーションを含む。
  */
 function generateHonoApp(
   modules: ServerModule[],
@@ -237,16 +299,23 @@ function generateHonoApp(
   lines.push(`import { Hono } from "hono";`);
   lines.push(``);
 
-  // server.ts を import（root 相対パスで埋め込む）
+  // server.ts と schema.ts を import
   const validModules: Array<[number, ServerModule]> = [];
   for (const [i, mod] of modules.entries()) {
     if (mod.routePrefix.includes(":")) {
-      console.warn(`[orbit-rpc] Dynamic route prefix "${mod.routePrefix}" is not supported for RPC. Skipping.`);
+      console.warn(
+        `[orbit-rpc] Dynamic route prefix "${mod.routePrefix}" is not supported for RPC. Skipping.`,
+      );
       continue;
     }
     validModules.push([i, mod]);
     const importPath = mod.filePath.split(path.sep).join("/");
     lines.push(`import * as mod${i} from "${importPath}";`);
+
+    if (mod.schemaFilePath) {
+      const schemaPath = mod.schemaFilePath.split(path.sep).join("/");
+      lines.push(`import * as schema${i} from "${schemaPath}";`);
+    }
   }
 
   lines.push(``);
@@ -260,13 +329,39 @@ function generateHonoApp(
       lines.push(`app.post("${endpoint}", async (c) => {`);
       lines.push(`  try {`);
       lines.push(`    const body = await c.req.text();`);
-      lines.push(`    if (body.length > 1048576) return c.json({ error: "Payload too large" }, 413);`);
+      lines.push(
+        `    if (body.length > 1048576) return c.json({ error: "Payload too large" }, 413);`,
+      );
       lines.push(`    const args = body ? JSON.parse(body) : [];`);
-      lines.push(`    const result = await mod${i}.${fn.name}(...args);`);
+
+      // Zod バリデーション: スキーマが紐付いた引数を検証
+      if (mod.schemaFilePath) {
+        for (let pi = 0; pi < fn.params.length; pi++) {
+          const param = fn.params[pi];
+          if (param.schemaName) {
+            lines.push(
+              `    if (args[${pi}] !== undefined) {`,
+            );
+            lines.push(
+              `      try { args[${pi}] = schema${i}.${param.schemaName}.parse(args[${pi}]); }`,
+            );
+            lines.push(
+              `      catch (e) { return c.json({ error: "Validation error on \\"${param.name}\\": " + e.message }, 400); }`,
+            );
+            lines.push(`    }`);
+          }
+        }
+      }
+
+      lines.push(
+        `    const result = await mod${i}.${fn.name}(...args);`,
+      );
       lines.push(`    return c.json(result ?? null);`);
       lines.push(`  } catch (err) {`);
       lines.push(`    console.error(err);`);
-      lines.push(`    return c.json({ error: "Internal Server Error" }, 500);`);
+      lines.push(
+        `    return c.json({ error: "Internal Server Error" }, 500);`,
+      );
       lines.push(`  }`);
       lines.push(`});`);
       lines.push(``);
