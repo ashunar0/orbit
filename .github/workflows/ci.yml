@@ -23,7 +23,8 @@ jobs:
           cd packages/orbit-form && vp pack && cd ../..
           cd packages/orbit-rpc && vp pack && cd ../..
 
-      - run: vp check
+      - name: Run checks
+        run: vp check packages/ apps/website/
 
   test:
     runs-on: ubuntu-latest
