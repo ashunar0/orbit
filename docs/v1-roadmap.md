@@ -1,112 +1,96 @@
 # Orbit v1.0 ロードマップ & フレームワーク構想
 
-> 2026-03-29 策定。セキュリティ監査・SSR 設計チェック・型安全性の棚卸しを経て決定。
+> 2026-03-29 策定。2026-03-31 更新（Phase A 完了、Phase B SSR 実装完了）。
 
 ## 全体像
 
 ```
-orbit-router   orbit-query   orbit-form    ← 単独で使えるライブラリ
-    │              │              │
-    └──────────────┼──────────────┘
-                   │
-              orbit (framework)              ← 統合フレームワーク
-              ・一貫した型安全性（schema 起点の型貫通）
-              ・SSR
-              ・invalidate キーの型安全化
+orbit-router   orbit-query   orbit-form   orbit-rpc    ← 単独で使えるライブラリ（v1.0.0）
+    │              │              │            │
+    └──────────────┼──────────────┼────────────┘
+                   │              │
+            orbit-ssr-plugin                            ← SSR 統合（v0.1.0）
+            ・dev SSR middleware
+            ・Cloudflare Workers 本番ビルド
+            ・orbit-query state hydration
 ```
 
 - 個別パッケージは **単独でも使える**。フォームだけ、ルーターだけの採用が可能
-- フレームワーク層が3パッケージを統合し、型安全性と SSR を提供する
+- orbit-ssr-plugin が SSR を提供し、パッケージ間の協調を担う
 - Zod を schema の single source of truth として採用（Standard Schema 等の抽象化は需要が出てから）
 
 ---
 
-## Phase A: 個別パッケージ v1.0（CSR only）
+## Phase A: 個別パッケージ v1.0（CSR only）— ✅ 完了
 
-### ゴール
+全パッケージ v1.0.0 npm publish 済み（2026-03-30）。
 
-API が安定し、単独で安心して使える状態にする。
+| パッケージ   | バージョン | 状態 |
+| ------------ | ---------- | ---- |
+| orbit-router | v1.0.0     | ✅ `url` prop（SSR-ready）、セキュリティ対応、README 完備 |
+| orbit-query  | v1.0.0     | ✅ `hydrate()` / `dehydrate()`（SSR-ready）、セキュリティ対応、README 完備 |
+| orbit-form   | v1.0.0     | ✅ API 安定、セキュリティ対応、README 完備 |
+| orbit-rpc    | v1.0.0     | ✅ Zod 自動バリデーション、セキュリティ対応、README 完備 |
+| create-orbit | -          | ✅ テンプレート更新済み、README 完備 |
 
-### 各パッケージの状態
-
-| パッケージ   | 現バージョン | v1.0 に必要なこと                                                         |
-| ------------ | ------------ | ------------------------------------------------------------------------- |
-| orbit-router | v0.2.2       | `url` prop 追加（SSR-ready、additive）、ドキュメント整備                  |
-| orbit-query  | v0.1.1       | `hydrate()` / `dehydrate()` 追加（SSR-ready、additive）、ドキュメント整備 |
-| orbit-form   | v0.1.6       | 現状で API 安定。ドキュメント整備                                         |
-
-### SSR-ready の意味
-
-v1.0 では SSR を実装しない。ただし、フレームワーク層が後から SSR を組み立てるための **フック** だけ用意する：
-
-- **orbit-router**: `<Router url="/path">` prop（省略時は `window.location` にフォールバック）
-- **orbit-query**: `client.hydrate(state)` / `dehydrate(client)` メソッド
-- **orbit-form**: 変更不要（クライアントサイドのみで完結）
-
-これらは additive な変更なので、既存の CSR ユーザーに影響しない。
-
-### セキュリティ対応（完了）
+### セキュリティ対応 — ✅ 完了
 
 - [x] `redirect()` に内部パスバリデーション追加（orbit-router v0.2.2）
 - [x] `defaultValues` の動的ルート遷移対応（orbit-form v0.1.6）
 - [x] `serializeKey` の undefined/null 衝突修正（orbit-query v0.1.1）
 - [x] キャッシュ GC 追加（orbit-query v0.1.1）
 - [x] `invalidate` 内の `JSON.parse` 除去（orbit-query v0.1.1）
-
-### 残りのセキュリティ項目（低優先度、v1.x で対応可）
-
-- [ ] `parseSearchParams` の `__proto__` キーガード
-- [ ] `setValue` の `__proto__` キーガード
-- [ ] `shallowEqual` の非 plain object 対応
-- [ ] plugin.ts のファイルパスエスケープ
+- [x] `parseSearchParams` の `__proto__` キーガード
+- [x] `setValue` の `__proto__` キーガード
+- [x] `shallowEqual` の非 plain object 対応
+- [x] plugin.ts のファイルパスエスケープ（orbit-router + orbit-rpc）
 
 ---
 
-## Phase B: orbit フレームワーク v0.1
+## Phase B: SSR — ✅ コア実装完了
 
-### ゴール
+orbit-ssr-plugin v0.1.0 npm publish 済み（2026-03-31）。
 
-3パッケージを統合し、「全部まとめて使う」体験を提供する。
+### 実装済み
 
-### フレームワーク層が担う責務
+- [x] `orbitSSR()` Vite プラグイン — vite.config に1行追加で SSR 有効化
+- [x] Dev SSR middleware（HMR 対応）
+- [x] 本番ビルド（`vp build` で client → server 2段ビルド自動実行）
+- [x] `dist/client/` — 静的アセット（CSS, JS + manifest）
+- [x] `dist/server/index.js` — Cloudflare Workers エントリ（Hono アプリ）
+- [x] Client manifest からアセットタグ自動注入
+- [x] orbit-query dehydrate/hydrate による状態引き継ぎ
+- [x] CSS import を main.tsx から自動抽出
+- [x] orbit-rpc 統合オプション（`rpc: true`）
+- [x] XSS 防止の JSON エスケープ
 
-#### 1. SSR
+---
 
-サーバーで URL → Router → Query.fetch → HTML、クライアントで hydrate → SPA に切り替え。
+## 残課題
 
-個別パッケージの SSR-ready フックを使って実装する：
+### 技術（プロダクト）
 
-```
-サーバー: url prop → Router レンダリング → Query fetch → dehydrate → HTML に埋め込み
-クライアント: hydrate → Router が SPA に切り替え → 以降は CSR
-```
+| # | 課題 | サイズ | 優先度 | 備考 |
+|---|------|--------|--------|------|
+| 1 | SSR 実デプロイ検証 | S | 高 | wrangler dev / CF Pages で Workers ビルドが実際に動くか確認 |
+| 2 | invalidate キーの型安全化 | M | 中 | `invalidate(["users"])` のキーに型を付ける |
+| 3 | schema 起点の型貫通 | L | 中 | Zod schema → server → hooks → page の型が自動で繋がる仕組み |
+| 4 | `<title>` カスタマイズ | S | 低 | server-entry の HTML タイトルが "Orbit App" ハードコード |
+| 5 | node:fs / node:path 警告 | S | 低 | orbit-router dist がブラウザビルドで externalize 警告 |
 
-#### 2. 一貫した型安全性
+### ドキュメント・発信
 
-schema.ts を起点に、Router → Query → Form の全レイヤーで型を貫通させる。
+| # | 課題 | サイズ | 備考 |
+|---|------|--------|------|
+| 6 | Zenn 記事執筆 | M | React Compiler 互換設計、Next.js 使わない選択肢、等 |
+| 7 | X での発信 | S | SSR 対応のデモ動画、building in public |
 
-**今の型フロー（棚卸し結果）:**
+### 運用
 
-```
-schema.ts → useForm({ schema })     ✅ 自動推論
-schema.ts → server.ts → hooks.ts    ✅ fn の型から推論
-schema.ts → useSearchParams(parse)  ✅ 戻り値型推論
-```
-
-**今切れている箇所:**
-
-- `invalidate` キーが `unknown[]` — QueryKey との型的な紐付けがない
-- Server 戻り値型 → Form 入力型の変換が手書き
-- キャッシュ取り出し時の `as T` キャスト（これは本質的に避けられない）
-
-**フレームワーク層で解決するもの:**
-
-- `invalidate` キーの型安全化（Router が生成する型定義に Query キー登録を追加）
-- Server → Form 変換の型支援（具体的な API は実装時に検討）
-
-#### 3. Guard のサーバー実行（将来）
-
-現在の guard は `useEffect` 内でクライアントのみ。サーバーサイドでの guard 実行はフレームワーク層の機能として将来追加。
+| # | 課題 | サイズ | 備考 |
+|---|------|--------|------|
+| 8 | create-orbit 動作確認 | S | `pnpm create orbit-app` でテンプレートから新規プロジェクトが立ち上がるか |
+| 9 | Node.js 22+ 対応 | S | 現環境は v20、Vite+ は 22+ 推奨 |
 
 ---
 
@@ -125,4 +109,6 @@ schema.ts → useSearchParams(parse)  ✅ 戻り値型推論
 - Linear クローン（7ルート）で規約がスケールすることを確認
 - CLAUDE.md だけで AI が規約に沿ったコードを生成できることを確認
 - SSR 対応に **破壊的変更が不要** であることをコードレベルで確認
-- セキュリティ監査で **致命的な脆弱性なし** を確認（高優先度の項目は対応済み）
+- セキュリティ監査で **致命的な脆弱性なし** を確認（全項目対応済み）
+- dev SSR が website app で動作確認済み
+- 本番ビルドが client + server の2段ビルドで正常動作確認済み
