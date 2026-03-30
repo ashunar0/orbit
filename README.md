@@ -8,9 +8,10 @@ A frontend toolkit for React. Routing, data fetching, and forms — unified with
 
 | Package                                  | Description                                         | Version |
 | ---------------------------------------- | --------------------------------------------------- | ------- |
-| [orbit-router](./packages/orbit-router/) | Directory-based router with typed params and links  | v0.2.0  |
-| [orbit-query](./packages/orbit-query/)   | Data fetching + caching (useQuery / useMutation)    | v0.1.0  |
-| [orbit-form](./packages/orbit-form/)     | React Compiler compatible forms with Zod validation | v0.1.4  |
+| [orbit-router](./packages/orbit-router/) | Directory-based router with typed params and links  | v0.2.2  |
+| [orbit-query](./packages/orbit-query/)   | Data fetching + caching (useQuery / useMutation)    | v0.1.2  |
+| [orbit-form](./packages/orbit-form/)     | React Compiler compatible forms with Zod validation | v0.1.6  |
+| [orbit-rpc](./packages/orbit-rpc/)       | server.ts → Hono RPC conversion with Zod validation | v0.2.0  |
 
 ## Why Orbit?
 
@@ -74,16 +75,17 @@ One Vite plugin. Three packages. Everything works together.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { orbitRouter } from "orbit-router";
+import { orbitRpc } from "orbit-rpc";
 
 export default defineConfig({
-  plugins: [react(), orbitRouter()],
+  plugins: [react(), orbitRouter(), orbitRpc()],
 });
 ```
 
 ## Quick Start
 
 ```bash
-pnpm add orbit-router orbit-query orbit-form zod
+pnpm add orbit-router orbit-query orbit-form orbit-rpc zod hono
 ```
 
 ### 1. Set up the router
