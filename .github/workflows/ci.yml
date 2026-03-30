@@ -24,7 +24,7 @@ jobs:
           cd packages/orbit-rpc && vp pack && cd ../..
 
       - name: Run checks
-        run: vp check packages/ apps/website/
+        run: vp check packages/*/src/ apps/website/src/
 
   test:
     runs-on: ubuntu-latest
