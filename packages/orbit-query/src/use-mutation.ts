@@ -26,7 +26,9 @@ export function useMutation<TInput, TOutput>(options: MutationOptions<TInput, TO
         }
 
         if (invalidate) {
-          client.invalidate(invalidate);
+          for (const key of invalidate) {
+            client.invalidate(Array.isArray(key) ? key : [key]);
+          }
         }
 
         return data;
