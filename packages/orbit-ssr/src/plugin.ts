@@ -115,10 +115,8 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
 
       resolveId(id) {
         if (id === VIRTUAL_APP_ID) return RESOLVED_VIRTUAL_APP_ID;
-        if (id === VIRTUAL_SERVER_ENTRY_ID)
-          return RESOLVED_VIRTUAL_SERVER_ENTRY_ID;
-        if (id === VIRTUAL_CLIENT_ENTRY_ID)
-          return RESOLVED_VIRTUAL_CLIENT_ENTRY_ID;
+        if (id === VIRTUAL_SERVER_ENTRY_ID) return RESOLVED_VIRTUAL_SERVER_ENTRY_ID;
+        if (id === VIRTUAL_CLIENT_ENTRY_ID) return RESOLVED_VIRTUAL_CLIENT_ENTRY_ID;
       },
 
       async load(id) {
@@ -155,19 +153,14 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
         // dev mode（command === 'serve'）では closeBundle は呼ばれないが念のため
         const fs = await import("node:fs");
         const path = await import("node:path");
-        const manifestPath = path.default.resolve(
-          root,
-          "dist/client/.vite/manifest.json",
-        );
+        const manifestPath = path.default.resolve(root, "dist/client/.vite/manifest.json");
         if (!fs.default.existsSync(manifestPath)) return;
 
         console.log("\n[orbit-ssr] Client build done. Starting server build...");
         isServerBuildPhase = true;
 
         // マニフェストを読んで共有変数にセット
-        clientManifest = JSON.parse(
-          fs.default.readFileSync(manifestPath, "utf-8"),
-        );
+        clientManifest = JSON.parse(fs.default.readFileSync(manifestPath, "utf-8"));
 
         // Rolldown は virtual module をエントリとして直接解決できないため、
         // proxy ファイルを経由して virtual module を import する
@@ -182,9 +175,7 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
         // server build を実行（同じ vite.config を使う）
         const viteConfigPath = path.default.resolve(root, "vite.config.ts");
         await viteBuild({
-          configFile: fs.default.existsSync(viteConfigPath)
-            ? viteConfigPath
-            : undefined,
+          configFile: fs.default.existsSync(viteConfigPath) ? viteConfigPath : undefined,
           root,
           build: {
             ssr: proxyEntry,
@@ -231,10 +222,7 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
               `<div id="root">${appHtml}</div>${stateScript}`,
             );
 
-            html = html.replace(
-              /\/src\/main\.tsx[^"]*/,
-              `/@id/__x00__${VIRTUAL_CLIENT_ENTRY_ID}`,
-            );
+            html = html.replace(/\/src\/main\.tsx[^"]*/, `/@id/__x00__${VIRTUAL_CLIENT_ENTRY_ID}`);
 
             res.setHeader("Content-Type", "text/html");
             res.end(html);
@@ -286,15 +274,10 @@ async function extractCssImports(root: string): Promise<string[]> {
  * dist/client/.vite/manifest.json を読む。
  * client build 前（dev mode 等）では null を返す。
  */
-async function readClientManifest(
-  root: string,
-): Promise<Record<string, ManifestEntry> | null> {
+async function readClientManifest(root: string): Promise<Record<string, ManifestEntry> | null> {
   const fs = await import("node:fs");
   const path = await import("node:path");
-  const manifestPath = path.default.resolve(
-    root,
-    "dist/client/.vite/manifest.json",
-  );
+  const manifestPath = path.default.resolve(root, "dist/client/.vite/manifest.json");
   if (!fs.default.existsSync(manifestPath)) return null;
   return JSON.parse(fs.default.readFileSync(manifestPath, "utf-8"));
 }
@@ -398,24 +381,16 @@ function generateServerEntry(
   useRpc: boolean,
   manifest: Record<string, ManifestEntry> | null,
 ): string {
-  const rpcImport = useRpc
-    ? `import rpcApp from "virtual:orbit-rpc/server";\n`
-    : "";
-  const rpcRoute = useRpc
-    ? `\n// RPC エンドポイント\napp.route("/", rpcApp);\n`
-    : "";
+  const rpcImport = useRpc ? `import rpcApp from "virtual:orbit-rpc/server";\n` : "";
+  const rpcRoute = useRpc ? `\n// RPC エンドポイント\napp.route("/", rpcApp);\n` : "";
 
   // マニフェストからアセットタグを生成
   let cssLinks = "";
   let jsScripts = "";
   if (manifest) {
     const assets = extractAssetsFromManifest(manifest);
-    cssLinks = assets.css
-      .map((f) => `<link rel="stylesheet" href="${f}">`)
-      .join("\n  ");
-    jsScripts = assets.js
-      .map((f) => `<script type="module" src="${f}"></script>`)
-      .join("\n  ");
+    cssLinks = assets.css.map((f) => `<link rel="stylesheet" href="${f}">`).join("\n  ");
+    jsScripts = assets.js.map((f) => `<script type="module" src="${f}"></script>`).join("\n  ");
   }
 
   return `
