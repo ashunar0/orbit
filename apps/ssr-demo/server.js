@@ -21,10 +21,7 @@ async function createServer() {
 
     try {
       // index.html を読み込んで Vite の HTML 変換を通す
-      let template = fs.readFileSync(
-        path.resolve(__dirname, "index.html"),
-        "utf-8",
-      );
+      let template = fs.readFileSync(path.resolve(__dirname, "index.html"), "utf-8");
       template = await vite.transformIndexHtml(url, template);
 
       // サーバーエントリをロード

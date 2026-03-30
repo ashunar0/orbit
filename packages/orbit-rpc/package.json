@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "description": "RPC layer for Orbit — auto-converts server.ts functions to Hono routes",
   "keywords": [
-    "rpc",
+    "fullstack",
     "hono",
-    "vite",
     "react",
-    "fullstack"
+    "rpc",
+    "vite"
   ],
   "license": "MIT",
   "author": "ashunar0",

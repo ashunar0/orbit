@@ -2,13 +2,23 @@
   "name": "create-orbit-app",
   "version": "0.3.0",
   "description": "Create a new Orbit project",
-  "type": "module",
+  "keywords": [
+    "form",
+    "orbit",
+    "query",
+    "react",
+    "router",
+    "vite"
+  ],
+  "license": "MIT",
   "bin": {
     "create-orbit": "./bin/create-orbit.mjs"
   },
-  "files": ["bin", "template"],
-  "keywords": ["orbit", "react", "vite", "router", "form", "query"],
-  "license": "MIT",
+  "files": [
+    "bin",
+    "template"
+  ],
+  "type": "module",
   "dependencies": {
     "@clack/prompts": "^0.10.0"
   }

@@ -67,10 +67,7 @@ export async function createBookmark(data: BookmarkInput): Promise<Bookmark> {
   return bookmark;
 }
 
-export async function updateBookmark(
-  id: string,
-  data: BookmarkInput,
-): Promise<Bookmark> {
+export async function updateBookmark(id: string, data: BookmarkInput): Promise<Bookmark> {
   await delay(300);
   const bookmark = bookmarks.find((b) => b.id === id);
   if (!bookmark) throw new Error("Bookmark not found");

@@ -33,10 +33,7 @@ export interface ServerModule {
  * エクスポートされた関数名と引数の型情報を抽出する。
  * 隣接する schema.ts があれば Zod スキーマとの対応も解決する。
  */
-export async function scanServerModules(
-  root: string,
-  routesDir: string,
-): Promise<ServerModule[]> {
+export async function scanServerModules(root: string, routesDir: string): Promise<ServerModule[]> {
   const absoluteRoutesDir = path.resolve(root, routesDir);
 
   if (!fs.existsSync(absoluteRoutesDir)) {
@@ -48,16 +45,10 @@ export async function scanServerModules(
   return modules;
 }
 
-async function walk(
-  dir: string,
-  routesRoot: string,
-  modules: ServerModule[],
-): Promise<void> {
+async function walk(dir: string, routesRoot: string, modules: ServerModule[]): Promise<void> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
 
-  const serverFile = entries.find(
-    (e) => e.isFile() && /^server\.ts$/.test(e.name),
-  );
+  const serverFile = entries.find((e) => e.isFile() && /^server\.ts$/.test(e.name));
 
   if (serverFile) {
     const filePath = path.join(dir, serverFile.name);
@@ -66,14 +57,10 @@ async function walk(
 
     // schema.ts が隣接しているか確認
     const schemaPath = path.join(dir, "schema.ts");
-    const hasSchema = entries.some(
-      (e) => e.isFile() && e.name === "schema.ts",
-    );
+    const hasSchema = entries.some((e) => e.isFile() && e.name === "schema.ts");
 
     // schema.ts から型名→スキーマ名のマップを構築
-    const schemaMap = hasSchema
-      ? extractSchemaMap(schemaPath)
-      : new Map<string, string>();
+    const schemaMap = hasSchema ? extractSchemaMap(schemaPath) : new Map<string, string>();
 
     // server.ts から関数を抽出（引数の型情報付き）
     const functions = extractExportedFunctions(filePath, schemaMap);
@@ -129,9 +116,7 @@ function extractExportedFunctions(
 
   // export async function name(...) / export function name(...)
   // 括弧のネストに対応するため、関数名の位置を見つけてから引数部分を抽出
-  for (const match of content.matchAll(
-    /export\s+(?:async\s+)?function\s+(\w+)\s*\(/g,
-  )) {
+  for (const match of content.matchAll(/export\s+(?:async\s+)?function\s+(\w+)\s*\(/g)) {
     const name = match[1];
     if (functions.some((f) => f.name === name)) continue;
 
@@ -141,9 +126,7 @@ function extractExportedFunctions(
   }
 
   // export const name = async (...) => / export const name = (...)  =>
-  for (const match of content.matchAll(
-    /export\s+const\s+(\w+)\s*=\s*(?:async\s+)?\(/g,
-  )) {
+  for (const match of content.matchAll(/export\s+const\s+(\w+)\s*=\s*(?:async\s+)?\(/g)) {
     const name = match[1];
     if (functions.some((f) => f.name === name)) continue;
 
@@ -185,10 +168,7 @@ function extractBalancedParens(content: string, openIndex: number): string {
  * → [{ name: "input", typeName: "TaskForm", schemaName: "taskFormSchema" },
  *    { name: "signal", typeName: "AbortSignal" }]
  */
-function parseParams(
-  paramsStr: string,
-  schemaMap: Map<string, string>,
-): FunctionParam[] {
+function parseParams(paramsStr: string, schemaMap: Map<string, string>): FunctionParam[] {
   if (!paramsStr.trim()) return [];
 
   // カンマで分割するが、括弧内のカンマは無視する

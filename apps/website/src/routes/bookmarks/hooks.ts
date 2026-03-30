@@ -9,12 +9,7 @@ import {
   updateBookmark,
   deleteBookmark,
 } from "./server";
-import {
-  bookmarkFormSchema,
-  parseSearchParams,
-  type Bookmark,
-  type BookmarkForm,
-} from "./schema";
+import { bookmarkFormSchema, parseSearchParams, type Bookmark, type BookmarkForm } from "./schema";
 
 // ── Search Params ──
 
@@ -100,11 +95,7 @@ export function useEditBookmarkForm(defaultValues: BookmarkForm | undefined) {
 
 // ── Filtering (pure transform) ──
 
-export function filterBookmarks(
-  bookmarks: Bookmark[],
-  q: string,
-  tag: string,
-) {
+export function filterBookmarks(bookmarks: Bookmark[], q: string, tag: string) {
   let result = bookmarks;
   if (q) {
     const lower = q.toLowerCase();

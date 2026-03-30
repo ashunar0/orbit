@@ -5,7 +5,8 @@ export default function Home() {
     <div>
       <h1 className="text-3xl font-bold mb-2">Welcome to Orbit</h1>
       <p className="text-gray-500 mb-6">
-        Edit <code className="text-sm bg-gray-100 px-1.5 py-0.5 rounded">src/routes/page.tsx</code> to get started.
+        Edit <code className="text-sm bg-gray-100 px-1.5 py-0.5 rounded">src/routes/page.tsx</code>{" "}
+        to get started.
       </p>
       <div className="flex gap-4 text-sm">
         <Link href="/todos" className="text-blue-600 hover:underline">

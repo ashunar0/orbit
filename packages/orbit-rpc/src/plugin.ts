@@ -90,8 +90,7 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
         // server.ts / schema.ts の追加・削除を監視
         const onFileChange = async (file: string) => {
           if (!file.startsWith(routesPath)) return;
-          if (!file.endsWith("/server.ts") && !file.endsWith("/schema.ts"))
-            return;
+          if (!file.endsWith("/server.ts") && !file.endsWith("/schema.ts")) return;
           serverModules = await scanServerModules(root, routesDir);
         };
         server.watcher.on("add", onFileChange);
@@ -103,17 +102,11 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
           if (!req.url?.startsWith(rpcBase)) return next();
 
           try {
-            const result = await handleRpcRequest(
-              server,
-              req,
-              rpcBase,
-              serverModules,
-            );
+            const result = await handleRpcRequest(server, req, rpcBase, serverModules);
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify(result ?? null));
           } catch (err) {
-            const message =
-              err instanceof Error ? err.message : "Internal Server Error";
+            const message = err instanceof Error ? err.message : "Internal Server Error";
             const status = err instanceof RpcError ? err.status : 500;
             res.statusCode = status;
             res.setHeader("Content-Type", "application/json");
@@ -154,12 +147,8 @@ function generateClientStub(mod: ServerModule, rpcBase: string): string {
     lines.push(`    } : {}),`);
     lines.push(`  });`);
     lines.push(`  if (!res.ok) {`);
-    lines.push(
-      `    const body = await res.json().catch(() => ({}));`,
-    );
-    lines.push(
-      `    throw new Error(body.error || \`RPC error: \${res.status}\`);`,
-    );
+    lines.push(`    const body = await res.json().catch(() => ({}));`);
+    lines.push(`    throw new Error(body.error || \`RPC error: \${res.status}\`);`);
     lines.push(`  }`);
     lines.push(`  const text = await res.text();`);
     lines.push(`  return text ? JSON.parse(text) : undefined;`);
@@ -238,12 +227,7 @@ async function handleRpcRequest(
   }
 
   // schema.ts があれば Zod バリデーションを適用
-  const validatedArgs = await validateArgs(
-    args,
-    fnDef,
-    mod,
-    server,
-  );
+  const validatedArgs = await validateArgs(args, fnDef, mod, server);
 
   // 関数実行
   return fn(...validatedArgs);
@@ -278,15 +262,10 @@ async function validateArgs(
       if (!result.success) {
         const issues = result.error.issues
           .map((issue: { path: (string | number)[]; message: string }) =>
-            issue.path.length > 0
-              ? `${issue.path.join(".")}: ${issue.message}`
-              : issue.message,
+            issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message,
           )
           .join(", ");
-        throw new RpcError(
-          `Validation error on "${param.name}": ${issues}`,
-          400,
-        );
+        throw new RpcError(`Validation error on "${param.name}": ${issues}`, 400);
       }
       validated[i] = result.data;
     }
@@ -303,11 +282,7 @@ async function validateArgs(
  *
  * schema.ts に Zod スキーマがあれば、.parse() によるバリデーションを含む。
  */
-function generateHonoApp(
-  modules: ServerModule[],
-  root: string,
-  rpcBase: string,
-): string {
+function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string): string {
   const lines: string[] = [];
 
   lines.push(`import { Hono } from "hono";`);
@@ -347,40 +322,34 @@ function generateHonoApp(
         `    if (body.length > 1048576) return c.json({ error: "Payload too large" }, 413);`,
       );
       lines.push(`    let args;`);
-      lines.push(`    try { args = body ? JSON.parse(body) : []; } catch { return c.json({ error: "Invalid JSON in request body" }, 400); }`);
-      lines.push(`    if (!Array.isArray(args)) return c.json({ error: "Request body must be a JSON array" }, 400);`);
+      lines.push(
+        `    try { args = body ? JSON.parse(body) : []; } catch { return c.json({ error: "Invalid JSON in request body" }, 400); }`,
+      );
+      lines.push(
+        `    if (!Array.isArray(args)) return c.json({ error: "Request body must be a JSON array" }, 400);`,
+      );
 
       // Zod バリデーション: スキーマが紐付いた引数を検証（不足引数も検証する）
       if (mod.schemaFilePath) {
         for (let pi = 0; pi < fn.params.length; pi++) {
           const param = fn.params[pi];
           if (param.schemaName) {
-            lines.push(
-              `    {`,
-            );
-            lines.push(
-              `      const r = schema${i}.${param.schemaName}.safeParse(args[${pi}]);`,
-            );
+            lines.push(`    {`);
+            lines.push(`      const r = schema${i}.${param.schemaName}.safeParse(args[${pi}]);`);
             lines.push(
               `      if (!r.success) { const msg = r.error.issues.map(i => i.path.length ? i.path.join(".") + ": " + i.message : i.message).join(", "); return c.json({ error: "Validation error on \\"${param.name}\\": " + msg }, 400); }`,
             );
-            lines.push(
-              `      args[${pi}] = r.data;`,
-            );
+            lines.push(`      args[${pi}] = r.data;`);
             lines.push(`    }`);
           }
         }
       }
 
-      lines.push(
-        `    const result = await mod${i}.${fn.name}(...args);`,
-      );
+      lines.push(`    const result = await mod${i}.${fn.name}(...args);`);
       lines.push(`    return c.json(result ?? null);`);
       lines.push(`  } catch (err) {`);
       lines.push(`    console.error(err);`);
-      lines.push(
-        `    return c.json({ error: "Internal Server Error" }, 500);`,
-      );
+      lines.push(`    return c.json({ error: "Internal Server Error" }, 500);`);
       lines.push(`  }`);
       lines.push(`});`);
       lines.push(``);
