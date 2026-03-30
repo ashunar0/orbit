@@ -1,5 +1,5 @@
 {
-  "name": "orbit-ssr",
+  "name": "orbit-ssr-plugin",
   "version": "0.1.0",
   "description": "SSR plugin for Orbit — server-side rendering with Cloudflare Workers",
   "keywords": [

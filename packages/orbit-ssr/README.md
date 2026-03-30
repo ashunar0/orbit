@@ -15,12 +15,12 @@ Server-side rendering for Orbit apps — one plugin, zero config.
 ## Quick Start
 
 ```bash
-pnpm add orbit-ssr hono
+pnpm add orbit-ssr-plugin hono
 ```
 
 ```ts
 // vite.config.ts
-import { orbitSSR } from "orbit-ssr";
+import { orbitSSR } from "orbit-ssr-plugin";
 
 export default defineConfig({
   plugins: [
