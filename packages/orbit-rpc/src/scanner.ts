@@ -127,34 +127,59 @@ function extractExportedFunctions(
   const content = fs.readFileSync(filePath, "utf-8");
   const functions: ServerFunction[] = [];
 
-  // export async function name(arg1: Type1, arg2: Type2): ReturnType {
-  // export function name(arg1: Type1): ReturnType {
+  // export async function name(...) / export function name(...)
+  // 括弧のネストに対応するため、関数名の位置を見つけてから引数部分を抽出
   for (const match of content.matchAll(
-    /export\s+(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/g,
+    /export\s+(?:async\s+)?function\s+(\w+)\s*\(/g,
   )) {
     const name = match[1];
-    const params = parseParams(match[2], schemaMap);
-    if (!functions.some((f) => f.name === name)) {
-      functions.push({ name, params });
-    }
+    if (functions.some((f) => f.name === name)) continue;
+
+    const paramsStr = extractBalancedParens(content, match.index! + match[0].length - 1);
+    const params = parseParams(paramsStr, schemaMap);
+    functions.push({ name, params });
   }
 
-  // export const name = async (arg1: Type1) => / export const name = function
+  // export const name = async (...) => / export const name = (...)  =>
   for (const match of content.matchAll(
-    /export\s+const\s+(\w+)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*(?::\s*[^=]*?)?\s*=>/g,
+    /export\s+const\s+(\w+)\s*=\s*(?:async\s+)?\(/g,
   )) {
     const name = match[1];
-    if (!functions.some((f) => f.name === name)) {
-      const params = parseParams(match[2], schemaMap);
-      functions.push({ name, params });
-    }
+    if (functions.some((f) => f.name === name)) continue;
+
+    const paramsStr = extractBalancedParens(content, match.index! + match[0].length - 1);
+    const params = parseParams(paramsStr, schemaMap);
+    functions.push({ name, params });
   }
 
   return functions;
 }
 
 /**
+ * 開き括弧の位置から対応する閉じ括弧までの中身を返す。
+ * ネストされた括弧（デフォルト引数内の関数呼び出し等）に対応。
+ */
+function extractBalancedParens(content: string, openIndex: number): string {
+  if (content[openIndex] !== "(") return "";
+
+  let depth = 0;
+  for (let i = openIndex; i < content.length; i++) {
+    if (content[i] === "(") depth++;
+    else if (content[i] === ")") {
+      depth--;
+      if (depth === 0) {
+        return content.slice(openIndex + 1, i);
+      }
+    }
+  }
+
+  // 閉じ括弧が見つからない場合（構文エラー）
+  return "";
+}
+
+/**
  * 関数の引数文字列をパースして FunctionParam 配列にする。
+ * デフォルト値内のカンマやネストに対応するため、括弧の深さを追跡する。
  *
  * 例: "input: TaskForm, signal?: AbortSignal"
  * → [{ name: "input", typeName: "TaskForm", schemaName: "taskFormSchema" },
@@ -166,14 +191,17 @@ function parseParams(
 ): FunctionParam[] {
   if (!paramsStr.trim()) return [];
 
+  // カンマで分割するが、括弧内のカンマは無視する
+  const parts = splitTopLevelCommas(paramsStr);
   const params: FunctionParam[] = [];
 
-  for (const part of paramsStr.split(",")) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
+  for (const part of parts) {
+    // デフォルト値を除去: "name: Type = defaultValue" → "name: Type"
+    const withoutDefault = part.replace(/\s*=\s*[\s\S]*$/, "").trim();
+    if (!withoutDefault) continue;
 
     // name?: Type or name: Type
-    const paramMatch = trimmed.match(/^(\w+)\??\s*:\s*(\w+)/);
+    const paramMatch = withoutDefault.match(/^(\w+)\??\s*:\s*(\w+)/);
     if (paramMatch) {
       const name = paramMatch[1];
       const typeName = paramMatch[2];
@@ -181,7 +209,7 @@ function parseParams(
       params.push({ name, typeName, schemaName });
     } else {
       // 型注釈がない場合（例: destructuring など）
-      const nameOnly = trimmed.match(/^(\w+)/);
+      const nameOnly = withoutDefault.match(/^(\w+)/);
       if (nameOnly) {
         params.push({ name: nameOnly[1] });
       }
@@ -189,6 +217,37 @@ function parseParams(
   }
 
   return params;
+}
+
+/**
+ * トップレベルのカンマで文字列を分割する。
+ * 括弧 (), {}, <> 内のカンマは分割しない。
+ */
+function splitTopLevelCommas(str: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let depth = 0;
+
+  for (const ch of str) {
+    if (ch === "(" || ch === "{" || ch === "<") {
+      depth++;
+      current += ch;
+    } else if (ch === ")" || ch === "}" || ch === ">") {
+      depth--;
+      current += ch;
+    } else if (ch === "," && depth === 0) {
+      parts.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+
+  if (current.trim()) {
+    parts.push(current);
+  }
+
+  return parts;
 }
 
 /**

@@ -227,7 +227,15 @@ async function handleRpcRequest(
 
   // リクエストボディを読み取り（引数は配列で送られる）
   const body = await readBody(req);
-  const args: unknown[] = body ? JSON.parse(body) : [];
+  let args: unknown[];
+  try {
+    args = body ? JSON.parse(body) : [];
+  } catch {
+    throw new RpcError("Invalid JSON in request body", 400);
+  }
+  if (!Array.isArray(args)) {
+    throw new RpcError("Request body must be a JSON array", 400);
+  }
 
   // schema.ts があれば Zod バリデーションを適用
   const validatedArgs = await validateArgs(
@@ -244,10 +252,11 @@ async function handleRpcRequest(
 /**
  * 各引数を対応する Zod スキーマでバリデーションする。
  * スキーマが紐付いていない引数はそのまま通す。
+ * 引数が不足していてもスキーマがあればバリデーションを実行する（Zod が required エラーを出す）。
  */
 async function validateArgs(
   args: unknown[],
-  fnDef: { params: Array<{ schemaName?: string }> },
+  fnDef: { params: Array<{ name: string; schemaName?: string }> },
   mod: ServerModule,
   server: ViteDevServer,
 ): Promise<unknown[]> {
@@ -259,22 +268,27 @@ async function validateArgs(
   const schemaModule = await server.ssrLoadModule(mod.schemaFilePath);
 
   const validated = [...args];
-  for (let i = 0; i < fnDef.params.length && i < args.length; i++) {
+  for (let i = 0; i < fnDef.params.length; i++) {
     const param = fnDef.params[i];
     if (!param.schemaName) continue;
 
     const schema = schemaModule[param.schemaName];
-    if (schema && typeof schema.parse === "function") {
-      try {
-        validated[i] = schema.parse(args[i]);
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Validation failed";
+    if (schema && typeof schema.safeParse === "function") {
+      const result = schema.safeParse(args[i]);
+      if (!result.success) {
+        const issues = result.error.issues
+          .map((issue: { path: (string | number)[]; message: string }) =>
+            issue.path.length > 0
+              ? `${issue.path.join(".")}: ${issue.message}`
+              : issue.message,
+          )
+          .join(", ");
         throw new RpcError(
-          `Validation error on "${param.name}": ${message}`,
+          `Validation error on "${param.name}": ${issues}`,
           400,
         );
       }
+      validated[i] = result.data;
     }
   }
 
@@ -332,21 +346,26 @@ function generateHonoApp(
       lines.push(
         `    if (body.length > 1048576) return c.json({ error: "Payload too large" }, 413);`,
       );
-      lines.push(`    const args = body ? JSON.parse(body) : [];`);
+      lines.push(`    let args;`);
+      lines.push(`    try { args = body ? JSON.parse(body) : []; } catch { return c.json({ error: "Invalid JSON in request body" }, 400); }`);
+      lines.push(`    if (!Array.isArray(args)) return c.json({ error: "Request body must be a JSON array" }, 400);`);
 
-      // Zod バリデーション: スキーマが紐付いた引数を検証
+      // Zod バリデーション: スキーマが紐付いた引数を検証（不足引数も検証する）
       if (mod.schemaFilePath) {
         for (let pi = 0; pi < fn.params.length; pi++) {
           const param = fn.params[pi];
           if (param.schemaName) {
             lines.push(
-              `    if (args[${pi}] !== undefined) {`,
+              `    {`,
             );
             lines.push(
-              `      try { args[${pi}] = schema${i}.${param.schemaName}.parse(args[${pi}]); }`,
+              `      const r = schema${i}.${param.schemaName}.safeParse(args[${pi}]);`,
             );
             lines.push(
-              `      catch (e) { return c.json({ error: "Validation error on \\"${param.name}\\": " + e.message }, 400); }`,
+              `      if (!r.success) { const msg = r.error.issues.map(i => i.path.length ? i.path.join(".") + ": " + i.message : i.message).join(", "); return c.json({ error: "Validation error on \\"${param.name}\\": " + msg }, 400); }`,
+            );
+            lines.push(
+              `      args[${pi}] = r.data;`,
             );
             lines.push(`    }`);
           }
