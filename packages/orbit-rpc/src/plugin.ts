@@ -86,7 +86,7 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
               serverModules,
             );
             res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result));
+            res.end(JSON.stringify(result ?? null));
           } catch (err) {
             const message =
               err instanceof Error ? err.message : "Internal Server Error";
@@ -131,7 +131,8 @@ function generateClientStub(mod: ServerModule, rpcBase: string): string {
     lines.push(`    const body = await res.json().catch(() => ({}));`);
     lines.push(`    throw new Error(body.error || \`RPC error: \${res.status}\`);`);
     lines.push(`  }`);
-    lines.push(`  return res.json();`);
+    lines.push(`  const text = await res.text();`);
+    lines.push(`  return text ? JSON.parse(text) : undefined;`);
     lines.push(`}`);
     lines.push(``);
   }
