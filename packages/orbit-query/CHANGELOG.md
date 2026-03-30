@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.0 (2026-03-30)
+
+Phase A 完了 — API 安定、セキュリティ対応完了、SSR-ready。
+
+### Features
+
+- `queryClient.hydrate(state)` — サーバーで取得したキャッシュをクライアントに復元。既存データがあればスキップ（クライアント優先）
+- `queryClient.dehydrate()` — 成功状態のクエリをシリアライズ可能なオブジェクトに変換
+
+### Documentation
+
+- README に SSR Support セクション、`hydrate` / `dehydrate` API ドキュメント追加
+
 ## v0.1.2 (2026-03-30)
 
 ### Bug Fixes

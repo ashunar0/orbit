@@ -1,5 +1,14 @@
 # orbit-form
 
+## 1.0.0 (2026-03-30)
+
+Phase A 完了 — API 安定、セキュリティ対応完了。
+
+### Security
+
+- `setValue` に `__proto__` / `constructor` / `prototype` キーガード追加
+- `shallowEqual` を plain object のみに制限（non-plain object は常に `false`）
+
 ## 0.1.6 (2026-03-29)
 
 ### Bug Fixes

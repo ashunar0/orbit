@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.0 (2026-03-30)
+
+Phase A 完了 — API 安定、セキュリティ対応完了。
+
+### Security
+
+- `generateHonoApp` のファイルパス文字列エスケープ追加
+
+### Documentation
+
+- README 新規作成（Quick Start、Zod 自動バリデーション、Hono ビルド、型フロー）
+
 ## v0.2.0 (2026-03-30)
 
 - schema.ts の Zod スキーマによる自動バリデーション

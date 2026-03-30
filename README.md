@@ -8,10 +8,10 @@ A frontend toolkit for React. Routing, data fetching, and forms — unified with
 
 | Package                                  | Description                                         | Version |
 | ---------------------------------------- | --------------------------------------------------- | ------- |
-| [orbit-router](./packages/orbit-router/) | Directory-based router with typed params and links  | v0.2.2  |
-| [orbit-query](./packages/orbit-query/)   | Data fetching + caching (useQuery / useMutation)    | v0.1.2  |
-| [orbit-form](./packages/orbit-form/)     | React Compiler compatible forms with Zod validation | v0.1.6  |
-| [orbit-rpc](./packages/orbit-rpc/)       | server.ts → Hono RPC conversion with Zod validation | v0.2.0  |
+| [orbit-router](./packages/orbit-router/) | Directory-based router with typed params and links  | v1.0.0  |
+| [orbit-query](./packages/orbit-query/)   | Data fetching + caching (useQuery / useMutation)    | v1.0.0  |
+| [orbit-form](./packages/orbit-form/)     | React Compiler compatible forms with Zod validation | v1.0.0  |
+| [orbit-rpc](./packages/orbit-rpc/)       | server.ts → Hono RPC conversion with Zod validation | v1.0.0  |
 
 ## Why Orbit?
 
@@ -250,7 +250,7 @@ Read the full design docs:
 
 ## Status
 
-Orbit is in early development (v0.x). The core APIs are stable and validated through real application development, but breaking changes may occur before v1.0.
+Orbit v1.0 is released. The core APIs (routing, data fetching, forms, RPC) are stable and validated through real application development.
 
 ## License
 

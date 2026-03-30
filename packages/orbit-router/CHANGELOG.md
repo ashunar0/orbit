@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.0 (2026-03-30)
+
+Phase A 完了 — API 安定、セキュリティ対応完了、SSR-ready。
+
+### Features
+
+- `<Router url={request.url}>` prop 追加 — SSR 環境でサーバーからURLを渡せるように。省略時は従来通り `window.location` を使用
+- SSR 時はナビゲーション・guard をスキップし静的スナップショットをレンダリング
+
+### Security
+
+- `parseSearchParams` に `__proto__` / `constructor` / `prototype` キーガード追加
+- `toImportPath` にファイルパス文字列エスケープ追加
+
+### Documentation
+
+- README に SSR Support セクション追加
+
 ## 0.2.2 (2026-03-29)
 
 ### Security

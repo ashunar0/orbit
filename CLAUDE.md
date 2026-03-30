@@ -27,10 +27,10 @@ Orbit は React のためのフロントエンドツールキット。
 
 | パッケージ     | 説明                        | 状態   |
 | -------------- | --------------------------- | ------ |
-| `orbit-router` | ディレクトリベースルーター  | v0.2.2 |
-| `orbit-query`  | データ取得 + キャッシュ     | v0.1.2 |
-| `orbit-form`   | React Compiler 互換フォーム | v0.1.6 |
-| `orbit-rpc`    | server.ts → Hono RPC 変換   | v0.1.0 |
+| `orbit-router` | ディレクトリベースルーター  | v1.0.0 |
+| `orbit-query`  | データ取得 + キャッシュ     | v1.0.0 |
+| `orbit-form`   | React Compiler 互換フォーム | v1.0.0 |
+| `orbit-rpc`    | server.ts → Hono RPC 変換   | v1.0.0 |
 
 ## リポジトリ構成
 
