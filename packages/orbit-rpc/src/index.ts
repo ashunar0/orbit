@@ -1,2 +1,2 @@
-export { orbitRpc } from "./plugin";
-export type { OrbitRpcConfig } from "./plugin";
+export { orbitRpc } from "./plugin.js";
+export type { OrbitRpcConfig } from "./plugin.js";

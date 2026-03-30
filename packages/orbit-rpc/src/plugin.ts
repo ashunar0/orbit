@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
-import { scanServerModules, type ServerModule } from "./scanner";
+import { scanServerModules, type ServerModule, type ServerFunction } from "./scanner.js";
 
 export interface OrbitRpcConfig {
   /** routes ディレクトリのパス（デフォルト: "src/routes"） */
@@ -201,7 +201,7 @@ async function handleRpcRequest(
     throw new RpcError(`Module not found: ${routePrefix}`, 404);
   }
 
-  const fnDef = mod.functions.find((f) => f.name === functionName);
+  const fnDef = mod.functions.find((f: ServerFunction) => f.name === functionName);
   if (!fnDef) {
     throw new RpcError(`Function not found: ${functionName}`, 404);
   }
@@ -363,14 +363,14 @@ function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string)
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 
-function readBody(req: NodeJS.ReadableStream): Promise<string> {
+function readBody(req: NodeJS.ReadableStream & { destroy?: () => void }): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = "";
     let size = 0;
     req.on("data", (chunk: Buffer) => {
       size += chunk.length;
       if (size > MAX_BODY_SIZE) {
-        req.destroy();
+        req.destroy?.();
         reject(new RpcError("Request body too large", 413));
         return;
       }
