@@ -92,7 +92,7 @@ export function Router({ routes, NotFound, ErrorFallback, url }: RouterProps) {
   });
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const pendingUrlRef = useRef<string | null>(null);
-  const [initialGuardDone, setInitialGuardDone] = useState(false);
+  const [initialGuardDone, setInitialGuardDone] = useState(isSSR);
   const [guardError, setGuardError] = useState<{ error: Error } | null>(null);
   const [navigationState, setNavigationState] = useState<NavigationState>("idle");
 

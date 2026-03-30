@@ -3,6 +3,8 @@ import type { Plugin } from "vite";
 export interface OrbitSSRConfig {
   /** index.html のパス（デフォルト: "index.html"） */
   entry?: string;
+  /** orbit-rpc の Hono アプリを統合する（デフォルト: false） */
+  rpc?: boolean;
 }
 
 /**
@@ -23,8 +25,19 @@ const RESOLVED_VIRTUAL_SERVER_ENTRY_ID = `\0${VIRTUAL_SERVER_ENTRY_ID}`;
 const VIRTUAL_CLIENT_ENTRY_ID = "virtual:orbit-ssr/client-entry";
 const RESOLVED_VIRTUAL_CLIENT_ENTRY_ID = `\0${VIRTUAL_CLIENT_ENTRY_ID}`;
 
+/** JSON を HTML <script> 内に安全に埋め込むためのエスケープ */
+function escapeJsonForHtml(json: string): string {
+  return json
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
   const entryHtml = config.entry ?? "index.html";
+  const useRpc = config.rpc ?? false;
   let root: string;
 
   return [
@@ -46,7 +59,7 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
           return generateAppModule();
         }
         if (id === RESOLVED_VIRTUAL_SERVER_ENTRY_ID) {
-          return generateServerEntry();
+          return generateServerEntry(useRpc);
         }
         if (id === RESOLVED_VIRTUAL_CLIENT_ENTRY_ID) {
           return generateClientEntry();
@@ -62,13 +75,14 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
         server.middlewares.use(async (req, res, next) => {
           const url = req.url;
           // 静的アセット・RPC・Vite 内部リクエストはスキップ
+          // 最後のパスセグメントにドットが含まれる場合のみ静的アセットと判定
           if (
             !url ||
             url.startsWith("/rpc") ||
             url.startsWith("/@") ||
             url.startsWith("/__") ||
             url.startsWith("/node_modules") ||
-            url.includes(".")
+            /\.[^/]+$/.test(url)
           ) {
             return next();
           }
@@ -87,8 +101,8 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
             // 3. React を HTML にレンダリング
             const { html: appHtml, dehydratedState } = await renderApp(url);
 
-            // 4. dehydrated state を注入
-            const stateScript = `<script>window.__ORBIT_DATA__=${JSON.stringify(dehydratedState).replace(/</g, "\\u003c")}</script>`;
+            // 4. dehydrated state を注入（XSS 防止のため完全エスケープ）
+            const stateScript = `<script>window.__ORBIT_DATA__=${escapeJsonForHtml(JSON.stringify(dehydratedState))}</script>`;
 
             // 5. #root に SSR 結果を注入
             html = html.replace(
@@ -184,8 +198,11 @@ if (window.__ORBIT_DATA__) {
   queryClient.hydrate(window.__ORBIT_DATA__);
 }
 
+const root = document.getElementById("root");
+if (!root) throw new Error("[orbit-ssr] #root element not found");
+
 hydrateRoot(
-  document.getElementById("root"),
+  root,
   createElement(
     StrictMode,
     null,
@@ -203,19 +220,26 @@ hydrateRoot(
  * virtual:orbit-ssr/server-entry
  *
  * Cloudflare Workers 用のサーバーエントリ。
- * RPC ルート（orbit-rpc）と SSR ページレンダリングを統合した Hono アプリ。
+ * SSR ページレンダリング（+ オプションで orbit-rpc の RPC ルート統合）の Hono アプリ。
  */
-function generateServerEntry(): string {
+function generateServerEntry(useRpc: boolean): string {
+  const rpcImport = useRpc ? `import rpcApp from "virtual:orbit-rpc/server";\n` : "";
+  const rpcRoute = useRpc ? `\n// RPC エンドポイント\napp.route("/", rpcApp);\n` : "";
+
   return `
 import { Hono } from "hono";
-import rpcApp from "virtual:orbit-rpc/server";
-import { renderApp } from "virtual:orbit-ssr/app";
+${rpcImport}import { renderApp } from "virtual:orbit-ssr/app";
+
+/** JSON を HTML <script> 内に安全に埋め込むためのエスケープ */
+function escapeJsonForHtml(json) {
+  return json
+    .replace(/</g, "\\\\u003c")
+    .replace(/>/g, "\\\\u003e")
+    .replace(/&/g, "\\\\u0026");
+}
 
 const app = new Hono();
-
-// RPC エンドポイント
-app.route("/", rpcApp);
-
+${rpcRoute}
 // 静的アセットは Workers Sites / Pages が配信する想定
 
 // SSR: すべてのページリクエスト
@@ -223,7 +247,7 @@ app.get("*", async (c) => {
   const url = new URL(c.req.url);
   const { html: appHtml, dehydratedState } = await renderApp(url.pathname + url.search);
 
-  const stateScript = \`<script>window.__ORBIT_DATA__=\${JSON.stringify(dehydratedState).replace(/</g, "\\\\u003c")}</script>\`;
+  const stateScript = \`<script>window.__ORBIT_DATA__=\${escapeJsonForHtml(JSON.stringify(dehydratedState))}</script>\`;
 
   const html = \`<!DOCTYPE html>
 <html lang="en">
