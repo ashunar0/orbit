@@ -6,6 +6,7 @@ on:
       - "orbit-router@*"
       - "orbit-query@*"
       - "orbit-form@*"
+      - "orbit-rpc@*"
 
 jobs:
   publish:

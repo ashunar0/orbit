@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.2 (2026-03-30)
+
+### Bug Fixes
+
+- `useMutation` の `invalidate` が複数キーを個別プレフィックスとして処理するよう修正 — `invalidate: ["bookmarks", "tags"]` が1つのプレフィックスとして解釈され、どのクエリキーにもマッチしない不具合を修正
+
 ## v0.1.1 (2026-03-29)
 
 ### Security
