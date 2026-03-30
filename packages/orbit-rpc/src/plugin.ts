@@ -16,6 +16,9 @@ export interface OrbitRpcConfig {
  * 1. クライアント側: server.ts の import を HTTP fetch スタブに差し替え
  * 2. dev サーバー: /rpc/* リクエストを受けて server.ts の関数を実行
  */
+const VIRTUAL_SERVER_ID = "virtual:orbit-rpc/server";
+const RESOLVED_VIRTUAL_SERVER_ID = `\0${VIRTUAL_SERVER_ID}`;
+
 export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
   const routesDir = config.routesDir ?? "src/routes";
   const rpcBase = config.rpcBase ?? "/rpc";
@@ -31,6 +34,21 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
 
       async buildStart() {
         serverModules = await scanServerModules(root, routesDir);
+      },
+
+      resolveId(id) {
+        if (id === VIRTUAL_SERVER_ID) {
+          return RESOLVED_VIRTUAL_SERVER_ID;
+        }
+      },
+
+      async load(id) {
+        if (id === RESOLVED_VIRTUAL_SERVER_ID) {
+          if (serverModules.length === 0) {
+            serverModules = await scanServerModules(root, routesDir);
+          }
+          return generateHonoApp(serverModules, root, rpcBase);
+        }
       },
 
       /**
@@ -199,6 +217,61 @@ async function handleRpcRequest(
 
   // 関数実行
   return fn(...args);
+}
+
+/**
+ * 本番用 Hono アプリのコードを生成する。
+ *
+ * import app from "virtual:orbit-rpc/server" で使える。
+ * Cloudflare Workers の場合は export default app; するだけ。
+ */
+function generateHonoApp(
+  modules: ServerModule[],
+  root: string,
+  rpcBase: string,
+): string {
+  const lines: string[] = [];
+
+  lines.push(`import { Hono } from "hono";`);
+  lines.push(``);
+
+  // server.ts を import
+  for (const [i, mod] of modules.entries()) {
+    const importPath = toImportPath(mod.filePath);
+    lines.push(`import * as mod${i} from "${importPath}";`);
+  }
+
+  lines.push(``);
+  lines.push(`const app = new Hono();`);
+  lines.push(``);
+
+  // 各関数を Hono ルートとして登録
+  for (const [i, mod] of modules.entries()) {
+    for (const fn of mod.functions) {
+      const endpoint = `${rpcBase}${mod.routePrefix}/${fn.name}`;
+      lines.push(`app.post("${endpoint}", async (c) => {`);
+      lines.push(`  try {`);
+      lines.push(`    const body = await c.req.text();`);
+      lines.push(`    const args = body ? JSON.parse(body) : [];`);
+      lines.push(`    const result = await mod${i}.${fn.name}(...args);`);
+      lines.push(`    return c.json(result ?? null);`);
+      lines.push(`  } catch (err) {`);
+      lines.push(`    const message = err instanceof Error ? err.message : "Internal Server Error";`);
+      lines.push(`    return c.json({ error: message }, 500);`);
+      lines.push(`  }`);
+      lines.push(`});`);
+      lines.push(``);
+    }
+  }
+
+  lines.push(`export default app;`);
+
+  return lines.join("\n");
+}
+
+/** Windows のバックスラッシュを import パス用にスラッシュへ変換 */
+function toImportPath(p: string): string {
+  return p.split(path.sep).join("/");
 }
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
