@@ -24,6 +24,7 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
   const rpcBase = config.rpcBase ?? "/rpc";
   let root: string;
   let serverModules: ServerModule[] = [];
+  let scanned = false;
 
   return [
     {
@@ -34,6 +35,7 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
 
       async buildStart() {
         serverModules = await scanServerModules(root, routesDir);
+        scanned = true;
       },
 
       resolveId(id) {
@@ -44,7 +46,7 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
 
       async load(id) {
         if (id === RESOLVED_VIRTUAL_SERVER_ID) {
-          if (serverModules.length === 0) {
+          if (!scanned) {
             serverModules = await scanServerModules(root, routesDir);
           }
           return generateHonoApp(serverModules, root, rpcBase);
@@ -235,9 +237,15 @@ function generateHonoApp(
   lines.push(`import { Hono } from "hono";`);
   lines.push(``);
 
-  // server.ts を import
+  // server.ts を import（root 相対パスで埋め込む）
+  const validModules: Array<[number, ServerModule]> = [];
   for (const [i, mod] of modules.entries()) {
-    const importPath = toImportPath(mod.filePath);
+    if (mod.routePrefix.includes(":")) {
+      console.warn(`[orbit-rpc] Dynamic route prefix "${mod.routePrefix}" is not supported for RPC. Skipping.`);
+      continue;
+    }
+    validModules.push([i, mod]);
+    const importPath = mod.filePath.split(path.sep).join("/");
     lines.push(`import * as mod${i} from "${importPath}";`);
   }
 
@@ -246,18 +254,19 @@ function generateHonoApp(
   lines.push(``);
 
   // 各関数を Hono ルートとして登録
-  for (const [i, mod] of modules.entries()) {
+  for (const [i, mod] of validModules) {
     for (const fn of mod.functions) {
       const endpoint = `${rpcBase}${mod.routePrefix}/${fn.name}`;
       lines.push(`app.post("${endpoint}", async (c) => {`);
       lines.push(`  try {`);
       lines.push(`    const body = await c.req.text();`);
+      lines.push(`    if (body.length > 1048576) return c.json({ error: "Payload too large" }, 413);`);
       lines.push(`    const args = body ? JSON.parse(body) : [];`);
       lines.push(`    const result = await mod${i}.${fn.name}(...args);`);
       lines.push(`    return c.json(result ?? null);`);
       lines.push(`  } catch (err) {`);
-      lines.push(`    const message = err instanceof Error ? err.message : "Internal Server Error";`);
-      lines.push(`    return c.json({ error: message }, 500);`);
+      lines.push(`    console.error(err);`);
+      lines.push(`    return c.json({ error: "Internal Server Error" }, 500);`);
       lines.push(`  }`);
       lines.push(`});`);
       lines.push(``);
@@ -267,11 +276,6 @@ function generateHonoApp(
   lines.push(`export default app;`);
 
   return lines.join("\n");
-}
-
-/** Windows のバックスラッシュを import パス用にスラッシュへ変換 */
-function toImportPath(p: string): string {
-  return p.split(path.sep).join("/");
 }
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
