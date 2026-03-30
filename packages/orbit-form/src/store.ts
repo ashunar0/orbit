@@ -167,6 +167,7 @@ export function createFormStore<TInput extends Record<string, unknown>, TOutput>
     },
 
     setValue<K extends keyof TInput>(name: K, value: TInput[K]) {
+      if (name === "__proto__" || name === "constructor" || name === "prototype") return;
       values[name] = value;
       isDirty = checkDirty();
       invalidateFieldSnapshot(name);

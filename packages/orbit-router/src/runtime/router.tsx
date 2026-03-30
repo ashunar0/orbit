@@ -404,12 +404,16 @@ function findNearestErrorBoundary(route: Route): ComponentType<{ error: Error }>
   return undefined;
 }
 
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function parseSearchParams(url: string): Record<string, string> {
   const idx = url.indexOf("?");
   if (idx === -1) return {};
   const result: Record<string, string> = {};
   new URLSearchParams(url.slice(idx)).forEach((value, key) => {
-    result[key] = value;
+    if (!DANGEROUS_KEYS.has(key)) {
+      result[key] = value;
+    }
   });
   return result;
 }

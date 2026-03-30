@@ -158,15 +158,20 @@ const EMPTY_STATE = {
   isSubmitting: false,
 };
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 function shallowEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
-  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
-  const keysA = Object.keys(a as Record<string, unknown>);
-  const keysB = Object.keys(b as Record<string, unknown>);
+  if (!isPlainObject(a) || !isPlainObject(b)) return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;
   for (const key of keysA) {
-    if (!Object.is((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]))
-      return false;
+    if (!Object.is(a[key], b[key])) return false;
   }
   return true;
 }

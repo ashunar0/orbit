@@ -298,11 +298,11 @@ function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string)
       continue;
     }
     validModules.push([i, mod]);
-    const importPath = mod.filePath.split(path.sep).join("/");
+    const importPath = mod.filePath.split(path.sep).join("/").replace(/[\\"]/g, "\\$&");
     lines.push(`import * as mod${i} from "${importPath}";`);
 
     if (mod.schemaFilePath) {
-      const schemaPath = mod.schemaFilePath.split(path.sep).join("/");
+      const schemaPath = mod.schemaFilePath.split(path.sep).join("/").replace(/[\\"]/g, "\\$&");
       lines.push(`import * as schema${i} from "${schemaPath}";`);
     }
   }

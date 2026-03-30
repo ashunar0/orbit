@@ -60,9 +60,9 @@ export function orbitRouter(config: OrbitRouterConfig = {}): Plugin[] {
   ];
 }
 
-/** Windows のバックスラッシュを import パス用にスラッシュへ変換 */
+/** Windows のバックスラッシュを import パス用にスラッシュへ変換し、特殊文字をエスケープ */
 function toImportPath(p: string): string {
-  return p.split(path.sep).join("/");
+  return p.split(path.sep).join("/").replace(/[\\"]/g, "\\$&");
 }
 
 function generateRouteModule({
