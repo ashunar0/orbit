@@ -78,6 +78,15 @@ function extractExportedFunctions(filePath: string): ServerFunction[] {
     functions.push({ name: match[1] });
   }
 
+  // export const name = async (...) => / export const name = function
+  for (const match of content.matchAll(
+    /export\s+const\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)\s*=>|function\b)/g,
+  )) {
+    if (!functions.some((f) => f.name === match[1])) {
+      functions.push({ name: match[1] });
+    }
+  }
+
   return functions;
 }
 

@@ -118,13 +118,13 @@ function generateClientStub(mod: ServerModule, rpcBase: string): string {
     const endpoint = `${rpcBase}${mod.routePrefix}/${fn.name}`;
     lines.push(`export async function ${fn.name}(...args) {`);
     lines.push(`  const signal = args[args.length - 1] instanceof AbortSignal ? args.pop() : undefined;`);
-    lines.push(`  const hasInput = args.length > 0;`);
+    lines.push(`  const hasArgs = args.length > 0;`);
     lines.push(`  const res = await fetch("${endpoint}", {`);
     lines.push(`    method: "POST",`);
     lines.push(`    signal,`);
-    lines.push(`    ...(hasInput ? {`);
+    lines.push(`    ...(hasArgs ? {`);
     lines.push(`      headers: { "Content-Type": "application/json" },`);
-    lines.push(`      body: JSON.stringify(args[0]),`);
+    lines.push(`      body: JSON.stringify(args),`);
     lines.push(`    } : {}),`);
     lines.push(`  });`);
     lines.push(`  if (!res.ok) {`);
@@ -172,7 +172,7 @@ async function handleRpcRequest(
   }
 
   const routePrefix = rpcPath.slice(0, lastSlash) || "";
-  const functionName = rpcPath.slice(lastSlash + 1);
+  const functionName = decodeURIComponent(rpcPath.slice(lastSlash + 1));
 
   const mod = modules.find((m) => m.routePrefix === routePrefix);
   if (!mod) {
@@ -192,18 +192,27 @@ async function handleRpcRequest(
     throw new RpcError(`${functionName} is not a function`, 500);
   }
 
-  // リクエストボディを読み取り
+  // リクエストボディを読み取り（引数は配列で送られる）
   const body = await readBody(req);
-  const input = body ? JSON.parse(body) : undefined;
+  const args = body ? JSON.parse(body) : [];
 
   // 関数実行
-  return input !== undefined ? fn(input) : fn();
+  return fn(...args);
 }
+
+const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 
 function readBody(req: NodeJS.ReadableStream): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = "";
+    let size = 0;
     req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_SIZE) {
+        req.destroy();
+        reject(new RpcError("Request body too large", 413));
+        return;
+      }
       data += chunk.toString();
     });
     req.on("end", () => resolve(data));
