@@ -31,6 +31,7 @@ Orbit は React のためのフロントエンドツールキット。
 | `orbit-query`  | データ取得 + キャッシュ     | v1.0.0 |
 | `orbit-form`   | React Compiler 互換フォーム | v1.0.0 |
 | `orbit-rpc`    | server.ts → Hono RPC 変換   | v1.0.0 |
+| `orbit-ssr-plugin` | SSR + Cloudflare Workers ビルド | v0.1.0 |
 
 ## リポジトリ構成
 
@@ -54,6 +55,10 @@ orbit/                            Vite+ monorepo (pnpm workspace)
 │       ├── index.ts              エクスポート口
 │       ├── plugin.ts             Vite プラグイン（スタブ変換 + dev middleware + Hono アプリ生成）
 │       └── scanner.ts            server.ts スキャナ
+├── packages/orbit-ssr/           SSR Vite プラグイン（npm 名: orbit-ssr-plugin）
+│   └── src/
+│       ├── index.ts              エクスポート口
+│       └── plugin.ts             Vite プラグイン（dev SSR middleware + Workers ビルド）
 ├── apps/website/                 playground（動作確認用アプリ）
 │   ├── vite.config.ts            orbitRouter() + react プラグイン
 │   └── src/
@@ -104,6 +109,7 @@ cd packages/orbit-router && pnpm run test
 - [x] **Phase 4** — orbit-form 実装
 - [x] **Phase 5** — アーキテクチャ検証（Todoist クローンで実証。orbit-form の API 改善、Router 型定義修正、React Compiler 互換確認）
 - [x] **Phase 6** — orbit-rpc 実装（server.ts → Hono RPC 自動変換、Cloudflare Workers 対応）
+- [x] **Phase 7** — orbit-ssr-plugin 実装（dev SSR + Cloudflare Workers 本番ビルド）
 
 ## ディレクトリ規約
 

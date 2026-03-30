@@ -12,6 +12,7 @@ A frontend toolkit for React. Routing, data fetching, and forms — unified with
 | [orbit-query](./packages/orbit-query/)   | Data fetching + caching (useQuery / useMutation)    | v1.0.0  |
 | [orbit-form](./packages/orbit-form/)     | React Compiler compatible forms with Zod validation | v1.0.0  |
 | [orbit-rpc](./packages/orbit-rpc/)       | server.ts → Hono RPC conversion with Zod validation | v1.0.0  |
+| [orbit-ssr-plugin](./packages/orbit-ssr/) | SSR with Cloudflare Workers (Vite plugin)           | v0.1.0  |
 
 ## Why Orbit?
 
@@ -68,7 +69,7 @@ No `useCallback`, `useMemo`, or `React.memo` needed — the compiler handles it.
 
 ### Zero-config integration
 
-One Vite plugin. Three packages. Everything works together.
+One Vite plugin per concern. Everything works together.
 
 ```ts
 // vite.config.ts
@@ -76,16 +77,17 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { orbitRouter } from "orbit-router";
 import { orbitRpc } from "orbit-rpc";
+import { orbitSSR } from "orbit-ssr-plugin";
 
 export default defineConfig({
-  plugins: [react(), orbitRouter(), orbitRpc()],
+  plugins: [react(), orbitRouter(), orbitRpc(), orbitSSR()],
 });
 ```
 
 ## Quick Start
 
 ```bash
-pnpm add orbit-router orbit-query orbit-form orbit-rpc zod hono
+pnpm add orbit-router orbit-query orbit-form orbit-rpc orbit-ssr-plugin zod hono
 ```
 
 ### 1. Set up the router
