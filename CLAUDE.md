@@ -28,8 +28,9 @@ Orbit は React のためのフロントエンドツールキット。
 | パッケージ     | 説明                        | 状態   |
 | -------------- | --------------------------- | ------ |
 | `orbit-router` | ディレクトリベースルーター  | v0.2.2 |
-| `orbit-query`  | データ取得 + キャッシュ     | v0.1.1 |
+| `orbit-query`  | データ取得 + キャッシュ     | v0.1.2 |
 | `orbit-form`   | React Compiler 互換フォーム | v0.1.6 |
+| `orbit-rpc`    | server.ts → Hono RPC 変換  | v0.1.0 |
 
 ## リポジトリ構成
 
@@ -46,8 +47,13 @@ orbit/                            Vite+ monorepo (pnpm workspace)
 │           ├── link.tsx          <Link> コンポーネント（SPA ナビゲーション）
 │           ├── match.ts          ルートマッチング（動的パラメータ対応）
 │           └── hooks.ts          useParams() 等の hooks
-├── packages/orbit-query/         データ取得 + キャッシュ（実装準備中）
-├── packages/orbit-form/          フォームライブラリ（計画中）
+├── packages/orbit-query/         データ取得 + キャッシュ
+├── packages/orbit-form/          フォームライブラリ
+├── packages/orbit-rpc/           server.ts → Hono RPC 変換（Vite プラグイン）
+│   └── src/
+│       ├── index.ts              エクスポート口
+│       ├── plugin.ts             Vite プラグイン（スタブ変換 + dev middleware + Hono アプリ生成）
+│       └── scanner.ts            server.ts スキャナ
 ├── apps/website/                 playground（動作確認用アプリ）
 │   ├── vite.config.ts            orbitRouter() + react プラグイン
 │   └── src/
@@ -85,6 +91,7 @@ cd packages/orbit-router && pnpm run test
 
 - **ツールチェーン**: Vite+ v0.1.12（alpha）— Rolldown, Oxlint, Oxfmt, Vitest
 - **UI**: React 19
+- **サーバー**: Hono（RPC ルート生成先）
 - **バリデーション**: Zod
 - **パッケージマネージャ**: pnpm（Vite+ monorepo テンプレート由来）
 - **ビルド**: tsdown（`vp pack` 経由）
@@ -96,6 +103,7 @@ cd packages/orbit-router && pnpm run test
 - [x] **Phase 3** — orbit-router 型安全化（typed params, typed links, typed search params）
 - [x] **Phase 4** — orbit-form 実装
 - [x] **Phase 5** — アーキテクチャ検証（Todoist クローンで実証。orbit-form の API 改善、Router 型定義修正、React Compiler 互換確認）
+- [x] **Phase 6** — orbit-rpc 実装（server.ts → Hono RPC 自動変換、Cloudflare Workers 対応）
 
 ## ディレクトリ規約
 
