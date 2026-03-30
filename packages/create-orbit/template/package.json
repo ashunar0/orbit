@@ -15,7 +15,7 @@
     "orbit-form": "^0.1.6",
     "orbit-query": "^0.1.1",
     "orbit-router": "^0.2.2",
-    "orbit-rpc": "^0.0.1",
+    "orbit-rpc": "^0.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.24.0"
