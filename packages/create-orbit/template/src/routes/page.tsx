@@ -8,6 +8,9 @@ export default function Home() {
         Edit <code className="text-sm bg-gray-100 px-1.5 py-0.5 rounded">src/routes/page.tsx</code> to get started.
       </p>
       <div className="flex gap-4 text-sm">
+        <Link href="/todos" className="text-blue-600 hover:underline">
+          Todos
+        </Link>
         <Link href="/about" className="text-blue-600 hover:underline">
           About
         </Link>
