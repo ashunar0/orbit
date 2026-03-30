@@ -12,6 +12,7 @@ Data fetching and caching for React — designed for the AI era.
 - **Array keys** — Prefix-based invalidation with array keys
 - **AbortSignal** — Automatic cancellation signal for fetch functions
 - **staleTime / refetchInterval / enabled** — Essential options included
+- **SSR-ready** — `dehydrate()` / `hydrate()` for server-side rendering
 
 ## Quick Start
 
@@ -98,12 +99,39 @@ export function useCreatePost() {
 const queryClient = createQueryClient();
 ```
 
-| Method                    | Description                       |
-| ------------------------- | --------------------------------- |
-| `fetchQuery(options)`     | Fetch data and store in cache     |
-| `invalidate(key)`         | Invalidate caches by prefix match |
-| `getQueryData(key)`       | Read cache directly               |
-| `setQueryData(key, data)` | Write cache directly              |
+| Method                    | Description                                        |
+| ------------------------- | -------------------------------------------------- |
+| `fetchQuery(options)`     | Fetch data and store in cache                      |
+| `invalidate(key)`         | Invalidate caches by prefix match                  |
+| `getQueryData(key)`       | Read cache directly                                |
+| `setQueryData(key, data)` | Write cache directly                               |
+| `dehydrate()`             | Serialize cache to a plain object (for SSR)        |
+| `hydrate(state)`          | Restore cache from a dehydrated state (for SSR)    |
+
+## SSR Support
+
+`dehydrate()` and `hydrate()` enable server-side rendering by transferring cache state from server to client:
+
+```tsx
+// Server: fetch data and serialize cache
+const queryClient = createQueryClient();
+await queryClient.fetchQuery({ key: ["posts"], fn: getPosts });
+const dehydratedState = queryClient.dehydrate();
+// Embed dehydratedState in HTML (e.g., as a <script> tag)
+```
+
+```tsx
+// Client: restore cache before rendering
+const queryClient = createQueryClient();
+queryClient.hydrate(dehydratedState);
+
+<QueryProvider client={queryClient}>
+  <App />
+</QueryProvider>
+```
+
+- `hydrate()` skips keys that already have data (client takes priority)
+- Hydrated entries are marked as fresh, preventing unnecessary refetches on mount
 
 ## License
 

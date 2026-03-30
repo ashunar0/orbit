@@ -18,6 +18,7 @@ Directory-based React router built on Vite. Drop files into `routes/` and get ty
 - **Type-safe links** — `<Link href="/typo">` is a type error
 - **Type-safe search params** — `useSearchParams(parse)` with optional validation
 - **Navigation state** — `useNavigation()` for progress indicators
+- **SSR-ready** — `<Router url={request.url}>` for server-side rendering
 
 ## Quick Start
 
@@ -142,6 +143,25 @@ export default async function guard({ signal }: GuardArgs) {
   // complex auth logic...
 }
 ```
+
+## SSR Support
+
+The `<Router>` component accepts a `url` prop for server-side rendering. When provided, the router uses this URL instead of `window.location`:
+
+```tsx
+// Server-side
+<Router routes={routes} url={request.url} />
+
+// Client-side (default — uses window.location)
+<Router routes={routes} />
+```
+
+When `url` is set:
+- `window.location` is never accessed (safe in non-browser environments)
+- Navigation and guards are disabled (server renders a static snapshot)
+- If `url` is omitted in an environment without `window`, the router throws an error
+
+This is an additive change — existing CSR code works without modification.
 
 ## Type Safety
 
