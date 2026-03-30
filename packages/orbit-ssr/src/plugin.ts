@@ -54,7 +54,7 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
         if (id === VIRTUAL_CLIENT_ENTRY_ID) return RESOLVED_VIRTUAL_CLIENT_ENTRY_ID;
       },
 
-      load(id) {
+      async load(id) {
         if (id === RESOLVED_VIRTUAL_APP_ID) {
           return generateAppModule();
         }
@@ -62,7 +62,8 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
           return generateServerEntry(useRpc);
         }
         if (id === RESOLVED_VIRTUAL_CLIENT_ENTRY_ID) {
-          return generateClientEntry();
+          const cssImports = await extractCssImports(root);
+          return generateClientEntry(cssImports);
         }
       },
     },
@@ -130,6 +131,41 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
 }
 
 /**
+ * main.tsx から CSS の import 文を抽出する。
+ * 例: import "./app.css" → "/src/app.css"
+ */
+async function extractCssImports(root: string): Promise<string[]> {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+
+  // main.tsx or main.ts を探す
+  const candidates = ["src/main.tsx", "src/main.ts"];
+  let mainContent = "";
+  for (const candidate of candidates) {
+    const fullPath = path.default.resolve(root, candidate);
+    if (fs.default.existsSync(fullPath)) {
+      mainContent = fs.default.readFileSync(fullPath, "utf-8");
+      break;
+    }
+  }
+
+  if (!mainContent) return [];
+
+  const cssImports: string[] = [];
+  for (const match of mainContent.matchAll(/import\s+["']([^"']+\.css)["']/g)) {
+    // 相対パスを /src/ からの絶対パスに変換
+    const importPath = match[1];
+    if (importPath.startsWith(".")) {
+      cssImports.push(`/src/${importPath.replace(/^\.\//, "")}`);
+    } else {
+      cssImports.push(importPath);
+    }
+  }
+
+  return cssImports;
+}
+
+/**
  * virtual:orbit-ssr/app
  *
  * サーバーサイドで React アプリをレンダリングする関数を提供する。
@@ -184,13 +220,15 @@ export async function renderApp(url) {
  * CSR の main.tsx に代わるクライアントエントリ。
  * サーバーから受け取った dehydrated state を hydrate してから React を起動する。
  */
-function generateClientEntry(): string {
+function generateClientEntry(cssImports: string[]): string {
+  const cssLines = cssImports.map((p) => `import "${p}";`).join("\n");
   return `
 import { hydrateRoot } from "react-dom/client";
 import { createElement, StrictMode } from "react";
 import { routes, NotFound } from "virtual:orbit-router/routes";
 import { Router } from "orbit-router";
 import { createQueryClient, QueryProvider } from "orbit-query";
+${cssLines}
 
 const queryClient = createQueryClient();
 
