@@ -9,12 +9,19 @@ export const contextStorage = new AsyncLocalStorage<Context>();
  * server.ts の関数内から呼ぶと、現在のリクエストに紐づく Hono Context が返る。
  * Cloudflare Workers のバインディング（D1, KV 等）や Cookie へのアクセスに使う。
  *
- * @example
+ * プロジェクト側で型付きラッパーを作って使う:
  * ```ts
+ * // src/lib/context.ts
  * import { getContext } from "orbit-rpc";
+ * type Bindings = { DB: D1Database };
+ * export const ctx = () => getContext<Bindings>();
+ * ```
  *
+ * ```ts
+ * // routes/articles/server.ts
+ * import { ctx } from "../../lib/context";
  * export async function getArticles() {
- *   const c = getContext<{ DB: D1Database }>();
+ *   const c = ctx();
  *   return c.env.DB.prepare("SELECT * FROM articles").all();
  * }
  * ```
