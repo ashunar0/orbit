@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 (2026-03-31)
+
+### Improvements
+
+- `.orbit/route-types.d.ts` に `/// <reference types="orbit-router/client" />` を自動追加 — `env.d.ts` の手動作成が不要に
+
 ## 1.0.0 (2026-03-30)
 
 Phase A 完了 — API 安定、セキュリティ対応完了、SSR-ready。

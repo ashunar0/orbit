@@ -38,7 +38,7 @@ export default defineConfig({
 ```
 
 ```tsx
-// src/app.tsx
+// src/app.tsx（orbit-ssr-plugin を使う場合は自動生成されるため不要）
 import { routes, NotFound } from "virtual:orbit-router/routes";
 import { Router } from "orbit-router";
 
