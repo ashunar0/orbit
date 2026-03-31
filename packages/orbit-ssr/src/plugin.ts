@@ -131,7 +131,11 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
           return generateServerEntry(useRpc, clientManifest);
         }
         if (id === RESOLVED_VIRTUAL_CLIENT_ENTRY_ID) {
-          const globalCss = await findGlobalCss(root);
+          const fs = await import("node:fs");
+          const pathMod = await import("node:path");
+          const cssPath = pathMod.default.resolve(root, "src/globals.css");
+          this.addWatchFile(cssPath);
+          const globalCss = fs.default.existsSync(cssPath) ? "/src/globals.css" : null;
           return generateClientEntry(globalCss);
         }
       },
@@ -146,7 +150,7 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
           if (ctx.server) return;
           // main.tsx 参照があれば除去（後方互換）
           html = html.replace(/\s*<script[^>]*\/src\/main\.tsx[^<]*<\/script>/, "");
-          // virtual client-entry を注入
+          // virtual client-entry を注入（build 時は生の virtual: ID — Vite の HTML バンドラーが解決する）
           html = html.replace(
             "</body>",
             `  <script type="module" src="${VIRTUAL_CLIENT_ENTRY_ID}"></script>\n</body>`,
@@ -255,16 +259,6 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
   ];
 }
 
-/**
- * src/globals.css の存在を確認する。
- * あればクライアントエントリで import するパスを返す。
- */
-async function findGlobalCss(root: string): Promise<string | null> {
-  const fs = await import("node:fs");
-  const path = await import("node:path");
-  const cssPath = path.default.resolve(root, "src/globals.css");
-  return fs.default.existsSync(cssPath) ? "/src/globals.css" : null;
-}
 
 /**
  * dist/client/.vite/manifest.json を読む。
