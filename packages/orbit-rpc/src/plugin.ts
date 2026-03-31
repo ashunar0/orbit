@@ -211,6 +211,10 @@ function createDevRpcApp(
     }
 
     // リクエストボディを読み取り
+    const contentLength = Number(c.req.header("content-length") ?? 0);
+    if (contentLength > 1048576) {
+      return c.json({ error: "Payload too large" }, 413);
+    }
     const body = await c.req.text();
     if (body.length > 1048576) {
       return c.json({ error: "Payload too large" }, 413);
@@ -227,7 +231,15 @@ function createDevRpcApp(
     }
 
     // schema.ts があれば Zod バリデーションを適用
-    const validatedArgs = await validateArgs(args, fnDef, mod, (p) => server.ssrLoadModule(p));
+    let validatedArgs: unknown[];
+    try {
+      validatedArgs = await validateArgs(args, fnDef, mod, (p) => server.ssrLoadModule(p));
+    } catch (err) {
+      if (err instanceof RpcValidationError) {
+        return c.json({ error: err.message }, 400);
+      }
+      throw err;
+    }
 
     // contextStorage に Hono Context をセットして関数を実行
     const result = await contextStorage.run(c, () => fn(...validatedArgs));
@@ -338,6 +350,10 @@ function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string)
       const endpoint = `${rpcBase}${mod.routePrefix}/${fn.name}`;
       lines.push(`app.post("${endpoint}", async (c) => {`);
       lines.push(`  try {`);
+      lines.push(`    const cl = Number(c.req.header("content-length") ?? 0);`);
+      lines.push(
+        `    if (cl > 1048576) return c.json({ error: "Payload too large" }, 413);`,
+      );
       lines.push(`    const body = await c.req.text();`);
       lines.push(
         `    if (body.length > 1048576) return c.json({ error: "Payload too large" }, 413);`,
@@ -406,7 +422,10 @@ function toWebRequest(nodeReq: IncomingMessage): Request {
     }
   }
 
-  const hasBody = nodeReq.method !== "GET" && nodeReq.method !== "HEAD";
+  const hasBody =
+    nodeReq.method === "POST" ||
+    nodeReq.method === "PUT" ||
+    nodeReq.method === "PATCH";
   return new Request(url, {
     method: nodeReq.method,
     headers,
@@ -426,7 +445,13 @@ function toWebRequest(nodeReq: IncomingMessage): Request {
 async function writeWebResponse(webRes: Response, nodeRes: ServerResponse): Promise<void> {
   nodeRes.statusCode = webRes.status;
   for (const [key, value] of webRes.headers) {
+    if (key.toLowerCase() === "set-cookie") continue;
     nodeRes.setHeader(key, value);
+  }
+  // Set-Cookie は複数ヘッダーを維持する必要がある（カンマ結合不可）
+  const cookies = webRes.headers.getSetCookie?.();
+  if (cookies?.length) {
+    nodeRes.setHeader("set-cookie", cookies);
   }
   const body = await webRes.arrayBuffer();
   nodeRes.end(Buffer.from(body));
