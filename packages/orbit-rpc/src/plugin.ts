@@ -1,5 +1,9 @@
 import path from "node:path";
+import { Readable } from "node:stream";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { Hono } from "hono";
 import type { Plugin, ViteDevServer } from "vite";
+import { contextStorage } from "./context.js";
 import { scanServerModules, type ServerModule, type ServerFunction } from "./scanner.js";
 
 export interface OrbitRpcConfig {
@@ -14,7 +18,7 @@ export interface OrbitRpcConfig {
  *
  * 2つの仕事をする:
  * 1. クライアント側: server.ts の import を HTTP fetch スタブに差し替え
- * 2. dev サーバー: /rpc/* リクエストを受けて server.ts の関数を実行
+ * 2. dev サーバー / 本番ビルド: Hono アプリで RPC リクエストを処理
  *
  * schema.ts に Zod スキーマがあれば、自動でバリデーションを適用する。
  */
@@ -97,26 +101,33 @@ export function orbitRpc(config: OrbitRpcConfig = {}): Plugin[] {
         server.watcher.on("change", onFileChange);
         server.watcher.on("unlink", onFileChange);
 
-        // RPC リクエストハンドラ
-        server.middlewares.use(async (req, res, next) => {
+        // dev 用 Hono アプリ（catch-all で動的にモジュールを解決）
+        const devApp = createDevRpcApp(server, rpcBase, () => serverModules);
+
+        // Vite middleware → Hono
+        server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next) => {
           if (!req.url?.startsWith(rpcBase)) return next();
 
           try {
-            const result = await handleRpcRequest(server, req, rpcBase, serverModules);
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result ?? null));
+            const webReq = toWebRequest(req);
+            const webRes = await devApp.fetch(webReq);
+            await writeWebResponse(webRes, res);
           } catch (err) {
-            const message = err instanceof Error ? err.message : "Internal Server Error";
-            const status = err instanceof RpcError ? err.status : 500;
-            res.statusCode = status;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ error: message }));
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Internal Server Error" }));
+            }
           }
         });
       },
     },
   ];
 }
+
+// ---------------------------------------------------------------------------
+// Client stub generation（クライアント側は変更なし）
+// ---------------------------------------------------------------------------
 
 /**
  * server.ts の中身を RPC スタブに差し替える。
@@ -159,113 +170,112 @@ function generateClientStub(mod: ServerModule, rpcBase: string): string {
   return lines.join("\n");
 }
 
-class RpcError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message);
-  }
-}
+// ---------------------------------------------------------------------------
+// Dev Hono app（dev サーバー用。catch-all で ssrLoadModule を使い HMR 対応）
+// ---------------------------------------------------------------------------
 
-/**
- * dev サーバーで RPC リクエストを処理する。
- *
- * URL: POST /rpc/{routePrefix}/{functionName}
- * Body: JSON（関数の引数）
- *
- * schema.ts に Zod スキーマがあれば、引数をバリデーションしてから関数を実行する。
- */
-async function handleRpcRequest(
+function createDevRpcApp(
   server: ViteDevServer,
-  req: { url?: string; method?: string } & NodeJS.ReadableStream,
   rpcBase: string,
-  modules: ServerModule[],
-): Promise<unknown> {
-  if (req.method !== "POST") {
-    throw new RpcError("Method not allowed", 405);
-  }
+  getModules: () => ServerModule[],
+): Hono {
+  const app = new Hono();
 
-  // URL からモジュールと関数名を特定
-  const rpcPath = req.url!.slice(rpcBase.length); // "/tasks/getTasks"
-  const lastSlash = rpcPath.lastIndexOf("/");
-  if (lastSlash === -1) {
-    throw new RpcError("Invalid RPC path", 400);
-  }
+  app.post(`${rpcBase}/*`, async (c) => {
+    // URL からモジュールと関数名を特定
+    const rpcPath = c.req.path.slice(rpcBase.length);
+    const lastSlash = rpcPath.lastIndexOf("/");
+    if (lastSlash === -1) {
+      return c.json({ error: "Invalid RPC path" }, 400);
+    }
 
-  const routePrefix = rpcPath.slice(0, lastSlash) || "";
-  const functionName = decodeURIComponent(rpcPath.slice(lastSlash + 1));
+    const routePrefix = rpcPath.slice(0, lastSlash) || "";
+    const functionName = decodeURIComponent(rpcPath.slice(lastSlash + 1));
 
-  const mod = modules.find((m) => m.routePrefix === routePrefix);
-  if (!mod) {
-    throw new RpcError(`Module not found: ${routePrefix}`, 404);
-  }
+    const modules = getModules();
+    const mod = modules.find((m) => m.routePrefix === routePrefix);
+    if (!mod) {
+      return c.json({ error: `Module not found: ${routePrefix}` }, 404);
+    }
 
-  const fnDef = mod.functions.find((f: ServerFunction) => f.name === functionName);
-  if (!fnDef) {
-    throw new RpcError(`Function not found: ${functionName}`, 404);
-  }
+    const fnDef = mod.functions.find((f: ServerFunction) => f.name === functionName);
+    if (!fnDef) {
+      return c.json({ error: `Function not found: ${functionName}` }, 404);
+    }
 
-  // Vite の ssrLoadModule で server.ts を動的ロード（HMR 対応）
-  const serverModule = await server.ssrLoadModule(mod.filePath);
-  const fn = serverModule[functionName];
+    // Vite の ssrLoadModule で server.ts を動的ロード（HMR 対応）
+    const serverModule = await server.ssrLoadModule(mod.filePath);
+    const fn = serverModule[functionName];
+    if (typeof fn !== "function") {
+      return c.json({ error: `${functionName} is not a function` }, 500);
+    }
 
-  if (typeof fn !== "function") {
-    throw new RpcError(`${functionName} is not a function`, 500);
-  }
+    // リクエストボディを読み取り
+    const body = await c.req.text();
+    if (body.length > 1048576) {
+      return c.json({ error: "Payload too large" }, 413);
+    }
 
-  // リクエストボディを読み取り（引数は配列で送られる）
-  const body = await readBody(req);
-  let args: unknown[];
-  try {
-    args = body ? JSON.parse(body) : [];
-  } catch {
-    throw new RpcError("Invalid JSON in request body", 400);
-  }
-  if (!Array.isArray(args)) {
-    throw new RpcError("Request body must be a JSON array", 400);
-  }
+    let args: unknown[];
+    try {
+      args = body ? JSON.parse(body) : [];
+    } catch {
+      return c.json({ error: "Invalid JSON in request body" }, 400);
+    }
+    if (!Array.isArray(args)) {
+      return c.json({ error: "Request body must be a JSON array" }, 400);
+    }
 
-  // schema.ts があれば Zod バリデーションを適用
-  const validatedArgs = await validateArgs(args, fnDef, mod, server);
+    // schema.ts があれば Zod バリデーションを適用
+    const validatedArgs = await validateArgs(args, fnDef, mod, (p) => server.ssrLoadModule(p));
 
-  // 関数実行
-  return fn(...validatedArgs);
+    // contextStorage に Hono Context をセットして関数を実行
+    const result = await contextStorage.run(c, () => fn(...validatedArgs));
+    return c.json(result ?? null);
+  });
+
+  // catch-all 以外の不正メソッドにも 405 を返す
+  app.all(`${rpcBase}/*`, (c) => c.json({ error: "Method not allowed" }, 405));
+
+  return app;
 }
+
+// ---------------------------------------------------------------------------
+// Validation（dev 用。prod はコード生成時にインライン化される）
+// ---------------------------------------------------------------------------
 
 /**
  * 各引数を対応する Zod スキーマでバリデーションする。
  * スキーマが紐付いていない引数はそのまま通す。
- * 引数が不足していてもスキーマがあればバリデーションを実行する（Zod が required エラーを出す）。
  */
 async function validateArgs(
   args: unknown[],
   fnDef: { params: Array<{ name: string; schemaName?: string }> },
   mod: ServerModule,
-  server: ViteDevServer,
+  loadModule: (path: string) => Promise<Record<string, unknown>>,
 ): Promise<unknown[]> {
-  // スキーマを使う引数があるか確認
   const hasValidation = fnDef.params.some((p) => p.schemaName);
   if (!hasValidation || !mod.schemaFilePath) return args;
 
-  // schema.ts を動的ロード
-  const schemaModule = await server.ssrLoadModule(mod.schemaFilePath);
+  const schemaModule = await loadModule(mod.schemaFilePath);
 
   const validated = [...args];
   for (let i = 0; i < fnDef.params.length; i++) {
     const param = fnDef.params[i];
     if (!param.schemaName) continue;
 
-    const schema = schemaModule[param.schemaName];
+    const schema = schemaModule[param.schemaName] as
+      | { safeParse: (v: unknown) => { success: boolean; data?: unknown; error?: { issues: Array<{ path: (string | number)[]; message: string }> } } }
+      | undefined;
     if (schema && typeof schema.safeParse === "function") {
       const result = schema.safeParse(args[i]);
       if (!result.success) {
-        const issues = result.error.issues
-          .map((issue: { path: (string | number)[]; message: string }) =>
+        const issues = result.error!.issues
+          .map((issue) =>
             issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message,
           )
           .join(", ");
-        throw new RpcError(`Validation error on "${param.name}": ${issues}`, 400);
+        throw new RpcValidationError(`Validation error on "${param.name}": ${issues}`);
       }
       validated[i] = result.data;
     }
@@ -273,6 +283,16 @@ async function validateArgs(
 
   return validated;
 }
+
+class RpcValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Production Hono app generation（contextStorage.run 対応）
+// ---------------------------------------------------------------------------
 
 /**
  * 本番用 Hono アプリのコードを生成する。
@@ -286,6 +306,7 @@ function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string)
   const lines: string[] = [];
 
   lines.push(`import { Hono } from "hono";`);
+  lines.push(`import { contextStorage } from "orbit-rpc";`);
   lines.push(``);
 
   // server.ts と schema.ts を import
@@ -329,7 +350,7 @@ function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string)
         `    if (!Array.isArray(args)) return c.json({ error: "Request body must be a JSON array" }, 400);`,
       );
 
-      // Zod バリデーション: スキーマが紐付いた引数を検証（不足引数も検証する）
+      // Zod バリデーション: スキーマが紐付いた引数を検証
       if (mod.schemaFilePath) {
         for (let pi = 0; pi < fn.params.length; pi++) {
           const param = fn.params[pi];
@@ -345,7 +366,10 @@ function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string)
         }
       }
 
-      lines.push(`    const result = await mod${i}.${fn.name}(...args);`);
+      // contextStorage.run で Hono Context をセットして関数を実行
+      lines.push(
+        `    const result = await contextStorage.run(c, () => mod${i}.${fn.name}(...args));`,
+      );
       lines.push(`    return c.json(result ?? null);`);
       lines.push(`  } catch (err) {`);
       lines.push(`    console.error(err);`);
@@ -361,22 +385,49 @@ function generateHonoApp(modules: ServerModule[], root: string, rpcBase: string)
   return lines.join("\n");
 }
 
-const MAX_BODY_SIZE = 1024 * 1024; // 1MB
+// ---------------------------------------------------------------------------
+// Node HTTP ↔ Web Standard 変換
+// ---------------------------------------------------------------------------
 
-function readBody(req: NodeJS.ReadableStream & { destroy?: () => void }): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let data = "";
-    let size = 0;
-    req.on("data", (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > MAX_BODY_SIZE) {
-        req.destroy?.();
-        reject(new RpcError("Request body too large", 413));
-        return;
-      }
-      data += chunk.toString();
-    });
-    req.on("end", () => resolve(data));
-    req.on("error", reject);
+/**
+ * Node.js IncomingMessage → Web Standard Request に変換する。
+ * Vite の connect middleware から Hono に橋渡しするために使う。
+ */
+function toWebRequest(nodeReq: IncomingMessage): Request {
+  const url = new URL(nodeReq.url!, `http://${nodeReq.headers.host || "localhost"}`);
+
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(nodeReq.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(key, v);
+    } else {
+      headers.set(key, value);
+    }
+  }
+
+  const hasBody = nodeReq.method !== "GET" && nodeReq.method !== "HEAD";
+  return new Request(url, {
+    method: nodeReq.method,
+    headers,
+    ...(hasBody
+      ? {
+          body: Readable.toWeb(nodeReq) as ReadableStream,
+          // @ts-expect-error -- duplex is required for streaming request bodies (Node 18+)
+          duplex: "half",
+        }
+      : {}),
   });
+}
+
+/**
+ * Web Standard Response → Node.js ServerResponse に書き戻す。
+ */
+async function writeWebResponse(webRes: Response, nodeRes: ServerResponse): Promise<void> {
+  nodeRes.statusCode = webRes.status;
+  for (const [key, value] of webRes.headers) {
+    nodeRes.setHeader(key, value);
+  }
+  const body = await webRes.arrayBuffer();
+  nodeRes.end(Buffer.from(body));
 }
