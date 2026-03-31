@@ -9,5 +9,7 @@
 |----|------|---|-------|------|
 | #9412 | 12:32 PM | 🔵 | Complete Type Flow Analysis Across Orbit Ecosystem Reveals Six Type Boundaries | ~997 |
 | #9410 | 12:31 PM | 🔵 | SSR Compatibility Analysis Reveals Zero Breaking Changes Required for orbit-router and orbit-query | ~704 |
+| #9406 | 12:30 PM | 🟣 | Redirect Function Validates Internal Paths Only | ~317 |
+| #9392 | 10:45 AM | 🟣 | Redirect Function Validates Internal Path Requirement | ~341 |
 | #9389 | 10:44 AM | 🔵 | Security Audit Reveals Critical Open Redirect and Three Important Issues in orbit-router | ~700 |
 </claude-mem-context>

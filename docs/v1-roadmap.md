@@ -77,27 +77,28 @@ orbit-ssr-plugin v0.1.0 npm publish 済み（2026-03-31）。
 | 3 | schema 起点の型貫通 | L | 中 | Zod schema → server → hooks → page の型が自動で繋がる仕組み |
 | 4 | `<title>` カスタマイズ | S | 低 | server-entry の HTML タイトルが "Orbit App" ハードコード |
 | 5 | node:fs / node:path 警告 | S | 低 | orbit-router dist がブラウザビルドで externalize 警告 |
+| 6 | RPC クライアントの fetch カスタマイズ | S | 低 | 生成スタブが素の fetch をハードコードしており、認証ヘッダー等の横断的処理を挟む手段がない。cookie 認証なら問題ないが、JWT 等では対応不可。`configure({ fetch })` 的な差し替え口を検討 |
 
 ### ドキュメント・発信
 
 | # | 課題 | サイズ | 備考 |
 |---|------|--------|------|
-| 6 | Zenn 記事執筆 | M | React Compiler 互換設計、Next.js 使わない選択肢、等 |
-| 7 | X での発信 | S | SSR 対応のデモ動画、building in public |
+| 7 | Zenn 記事執筆 | M | React Compiler 互換設計、Next.js 使わない選択肢、等 |
+| 8 | X での発信 | S | SSR 対応のデモ動画、building in public |
 
 ### 運用
 
 | # | 課題 | サイズ | 備考 |
 |---|------|--------|------|
-| 8 | create-orbit 動作確認 | S | `pnpm create orbit-app` でテンプレートから新規プロジェクトが立ち上がるか |
-| 9 | Node.js 22+ 対応 | S | 現環境は v20、Vite+ は 22+ 推奨 |
+| 9 | create-orbit 動作確認 | S | `pnpm create orbit-app` でテンプレートから新規プロジェクトが立ち上がるか |
+| 10 | Node.js 22+ 対応 | S | `engines` で >=22.12.0 を指定済み。CI・ドキュメントへの反映確認 |
 
 ---
 
 ## 設計原則（変わらないもの）
 
-- **読みやすさ > 書きやすさ** — フレームワークになっても魔法は入れない
-- **隠すな、揃えろ** — 暗黙の動作より明示的なコード
+- **読みやすさ > 書きやすさ** — コードの最終責任は人間にある。読めて判断できる状態を維持する
+- **隠すな、階層化しろ** — WHAT は見える、HOW は抽象化してよいが境界を明示する
 - **YAGNI** — Standard Schema、ORM 統合、マルチフレームワーク対応は需要が出てから
 - **React Compiler 前提** — 個別パッケージもフレームワークも
 - **Zod が source of truth** — 将来の抽象化の余地は残すが、今は Zod 一本

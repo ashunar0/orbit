@@ -4,16 +4,16 @@
 
 詳細は `docs/philosophy.md` を参照。以下は判断に迷ったとき立ち返る原則。
 
-### AI が書いて、人間が読む
+### 核心: 人間の最終責任
 
-- **読みやすさ > 書きやすさ**。短さのために処理を隠さない
+- **読みやすさ > 書きやすさ** — コードの最終責任は人間にある。読めて判断できる状態を維持する
 - **コードを自然言語に翻訳できるか？** — これが読みやすさの判定基準
 - **正しい書き方は1つ** — API の自由度を絞り、AI の出力を収束させる
 - **理解負債をゼロに** — AI がどれだけ書いても、人間がその場で理解できる状態を保つ
 
 ### 実装の判断基準
 
-- **隠すな、揃えろ** — Rails 的な「短いけど裏で何が起きてるかわからない」を避ける。Hono 的な「展開済みで明示的」を目指す
+- **隠すな、階層化しろ** — WHAT（何をしているか）はコードに見える状態にする。HOW（どう実現しているか）は抽象化してよいが、境界を明示する（例: `server.ts` というファイル名が境界）
 - **規約は道標であって壁ではない** — デフォルトはシンプルで読みやすく。逸れることは禁止しない
 - **React Compiler 前提** — `useSyncExternalStore`、Proxy 不使用、クラスインスタンス不使用、hooks 戻り値の不変性。`useCallback` / `useMemo` / `React.memo` は書かない（React Compiler が自動メモ化する）
 - **YAGNI** — 必要になるまで作らない
@@ -69,8 +69,12 @@ orbit/                            Vite+ monorepo (pnpm workspace)
     ├── orbit-query-design.md     orbit-query 設計ドキュメント
     ├── orbit-form-design.md      orbit-form 設計ドキュメント
     ├── file-conventions.md       ファイル規約（page/hooks/server/schema）
-    ├── requirements.md           要件定義
-    └── tickets.md                チケット一覧
+    ├── architecture.md           アーキテクチャ解説
+    ├── rpc-design.md             orbit-rpc 設計ドキュメント
+    ├── v1-roadmap.md             v1.0 ロードマップ & 残課題
+    ├── blog/                     ブログ記事ドラフト
+    ├── notes/                    思想の深掘りメモ
+    └── archive/                  過去ドキュメント（requirements.md, tickets.md 等）
 ```
 
 ## コマンド
@@ -176,7 +180,7 @@ const { mutate: create } = useCreateTask()
 
 - pre-commit hook（`vp staged`）が lint-staged 経由で動かない（Vite+ alpha のバグ）→ `.vite-hooks/pre-commit` をコメントアウト中
 - `@vitejs/plugin-react` の deprecation 警告 → `@vitejs/plugin-react-oxc` に置換すれば解消
-- Node.js 22+ 推奨だが、現環境は v20（動作はする）
+- Node.js 22.12.0+ 必須（`engines` で指定済み）
 
 ## リリース時のルール
 
