@@ -31,6 +31,9 @@ pnpm preview    # ビルド結果プレビュー
 - **ルーティング**: orbit-router（ディレクトリベース）
 - **データ取得**: orbit-query
 - **フォーム**: orbit-form（React Compiler 互換）
+- **RPC**: orbit-rpc（server.ts → Hono RPC 自動変換）
+- **SSR**: orbit-ssr-plugin（dev SSR + Cloudflare Workers ビルド）
+- **サーバー**: Hono
 - **バリデーション**: Zod
 - **CSS**: Tailwind CSS
 
@@ -66,8 +69,8 @@ return <div>...</div>;                                     // Render
 
 ## 設計思想
 
-- **読みやすさ > 書きやすさ** — 短さのために処理を隠さない
-- **隠すな、揃えろ** — 暗黙の動作より明示的なコード
+- **読みやすさ > 書きやすさ** — コードの最終責任は人間にある。読めて判断できる状態を維持する
+- **隠すな、階層化しろ** — WHAT（何をしているか）はコードに見える状態にする。HOW は抽象化してよいが境界を明示する
 - **React Compiler 前提** — useMemo / useCallback / React.memo は書かない
 - **YAGNI** — 必要になるまで作らない
 `;
@@ -94,6 +97,9 @@ pnpm preview    # Preview build
 - **Routing**: orbit-router (directory-based)
 - **Data Fetching**: orbit-query
 - **Forms**: orbit-form (React Compiler compatible)
+- **RPC**: orbit-rpc (server.ts → Hono RPC auto-conversion)
+- **SSR**: orbit-ssr-plugin (dev SSR + Cloudflare Workers build)
+- **Server**: Hono
 - **Validation**: Zod
 - **CSS**: Tailwind CSS
 
@@ -129,8 +135,8 @@ return <div>...</div>;                                     // Render
 
 ## Design Philosophy
 
-- **Readability > Writability** — Don't hide logic for brevity
-- **Explicit over implicit** — No magic, align everything
+- **Readability > Writability** — Humans hold final responsibility for code. Maintain the ability to read and judge
+- **Don't hide, layer** — WHAT (what code does) stays visible. HOW can be abstracted, but boundaries must be explicit
 - **React Compiler first** — No useMemo / useCallback / React.memo
 - **YAGNI** — Don't build it until you need it
 `;

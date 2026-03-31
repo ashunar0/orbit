@@ -210,6 +210,7 @@ export function generateRouteTypesContent(routes: RouteEntry[]): string {
 
   const lines: string[] = [
     "// このファイルは orbit-router が自動生成します。手動で編集しないでください。",
+    '/// <reference types="orbit-router/client" />',
     "",
     'import "orbit-router";',
     "",

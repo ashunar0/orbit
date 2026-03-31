@@ -131,17 +131,27 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
           return generateServerEntry(useRpc, clientManifest);
         }
         if (id === RESOLVED_VIRTUAL_CLIENT_ENTRY_ID) {
-          const cssImports = await extractCssImports(root);
-          return generateClientEntry(cssImports);
+          const globalCss = await findGlobalCss(root);
+          return generateClientEntry(globalCss);
         }
       },
 
-      // client build 時: main.tsx → client-entry に差し替え
+      // build 時: main.tsx 参照を除去し、virtual client-entry を注入
+      // dev 時は dev middleware が /@id/ 形式で注入するのでここでは何もしない
       transformIndexHtml: {
         order: "pre",
-        handler(html) {
+        handler(html, ctx) {
           if (isSsrBuild) return;
-          return html.replace(/\/src\/main\.tsx[^"]*/, VIRTUAL_CLIENT_ENTRY_ID);
+          // dev mode（server が存在する）ではスキップ — dev middleware に任せる
+          if (ctx.server) return;
+          // main.tsx 参照があれば除去（後方互換）
+          html = html.replace(/\s*<script[^>]*\/src\/main\.tsx[^<]*<\/script>/, "");
+          // virtual client-entry を注入
+          html = html.replace(
+            "</body>",
+            `  <script type="module" src="${VIRTUAL_CLIENT_ENTRY_ID}"></script>\n</body>`,
+          );
+          return html;
         },
       },
 
@@ -222,7 +232,15 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
               `<div id="root">${appHtml}</div>${stateScript}`,
             );
 
-            html = html.replace(/\/src\/main\.tsx[^"]*/, `/@id/__x00__${VIRTUAL_CLIENT_ENTRY_ID}`);
+            // main.tsx 参照があれば除去（後方互換）
+            html = html.replace(/\s*<script[^>]*\/src\/main\.tsx[^<]*<\/script>/, "");
+            // virtual client-entry を注入（dev 用のパス形式）
+            if (!html.includes(VIRTUAL_CLIENT_ENTRY_ID)) {
+              html = html.replace(
+                "</body>",
+                `  <script type="module" src="/@id/__x00__${VIRTUAL_CLIENT_ENTRY_ID}"></script>\n</body>`,
+              );
+            }
 
             res.setHeader("Content-Type", "text/html");
             res.end(html);
@@ -238,36 +256,14 @@ export function orbitSSR(config: OrbitSSRConfig = {}): Plugin[] {
 }
 
 /**
- * main.tsx から CSS の import 文を抽出する。
- * 例: import "./app.css" → "/src/app.css"
+ * src/globals.css の存在を確認する。
+ * あればクライアントエントリで import するパスを返す。
  */
-async function extractCssImports(root: string): Promise<string[]> {
+async function findGlobalCss(root: string): Promise<string | null> {
   const fs = await import("node:fs");
   const path = await import("node:path");
-
-  const candidates = ["src/main.tsx", "src/main.ts"];
-  let mainContent = "";
-  for (const candidate of candidates) {
-    const fullPath = path.default.resolve(root, candidate);
-    if (fs.default.existsSync(fullPath)) {
-      mainContent = fs.default.readFileSync(fullPath, "utf-8");
-      break;
-    }
-  }
-
-  if (!mainContent) return [];
-
-  const cssImports: string[] = [];
-  for (const match of mainContent.matchAll(/import\s+["']([^"']+\.css)["']/g)) {
-    const importPath = match[1];
-    if (importPath.startsWith(".")) {
-      cssImports.push(`/src/${importPath.replace(/^\.\//, "")}`);
-    } else {
-      cssImports.push(importPath);
-    }
-  }
-
-  return cssImports;
+  const cssPath = path.default.resolve(root, "src/globals.css");
+  return fs.default.existsSync(cssPath) ? "/src/globals.css" : null;
 }
 
 /**
@@ -337,15 +333,15 @@ export async function renderApp(url) {
  * CSR の main.tsx に代わるクライアントエントリ。
  * サーバーから受け取った dehydrated state を hydrate してから React を起動する。
  */
-function generateClientEntry(cssImports: string[]): string {
-  const cssLines = cssImports.map((p) => `import "${p}";`).join("\n");
+function generateClientEntry(globalCss: string | null): string {
+  const cssLine = globalCss ? `import "${globalCss}";\n` : "";
   return `
 import { hydrateRoot } from "react-dom/client";
 import { createElement, StrictMode } from "react";
 import { routes, NotFound } from "virtual:orbit-router/routes";
 import { Router } from "orbit-router";
 import { createQueryClient, QueryProvider } from "orbit-query";
-${cssLines}
+${cssLine}
 
 const queryClient = createQueryClient();
 
