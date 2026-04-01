@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.0 (2026-04-01)
+
+### Features
+
+- `Register` インターフェース追加 — `declare module "orbit-rpc"` で Env 型を1回宣言すれば `getContext()` が型パラメータ不要で使える
+  - `lib/context.ts` に型を宣言 → `server.ts` では `const c = getContext()` だけで型補完が効く
+  - 未登録時は `Record<string, unknown>` にフォールバック（後方互換）
+
 ## v1.1.0 (2026-04-01)
 
 ### Features
