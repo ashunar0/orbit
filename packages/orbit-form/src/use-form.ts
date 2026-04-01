@@ -35,6 +35,8 @@ export interface UseFormReturn<TInput extends Record<string, unknown>, TOutput> 
   register: <K extends keyof TInput & string>(name: K) => RegisterProps<TInput[K]>;
   /** プログラム的にフィールドの値を設定する（Select, DatePicker 等の非 input コンポーネント向け） */
   setValue: <K extends keyof TInput & string>(name: K, value: TInput[K]) => void;
+  /** サーバーエラー等をフィールドに紐付ける（"_root" でフォーム全体のエラー） */
+  setError: <K extends keyof TInput | "_root">(name: K, message: string) => void;
   /** フィールドのエラーメッセージを返す */
   fieldError: <K extends keyof TInput>(name: K) => string | undefined;
 }
@@ -132,6 +134,10 @@ export function useForm<TSchema extends ZodType<any, ZodTypeDef, any>>(
     store?.setValue(name, value);
   }
 
+  function setError<K extends keyof TInput | "_root">(name: K, message: string) {
+    store?.setError(name, message);
+  }
+
   function fieldError<K extends keyof TInput>(name: K): string | undefined {
     return snapshot.errors[name];
   }
@@ -146,6 +152,7 @@ export function useForm<TSchema extends ZodType<any, ZodTypeDef, any>>(
     reset,
     register,
     setValue,
+    setError,
     fieldError,
   };
 }

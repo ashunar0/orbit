@@ -244,6 +244,15 @@ export function createFormStore<TInput extends Record<string, unknown>, TOutput>
       }
     },
 
+    setError<K extends keyof TInput | "_root">(name: K, message: string) {
+      (errors as Record<string, string>)[name as string] = message;
+      if (name !== "_root") {
+        invalidateFieldSnapshot(name as keyof TInput);
+        notifyField(name as keyof TInput);
+      }
+      notifyGlobal();
+    },
+
     setSubmitting(submitting: boolean) {
       isSubmitting = submitting;
       invalidateSnapshot();

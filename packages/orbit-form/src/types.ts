@@ -39,6 +39,7 @@ export interface FormStore<TInput, TOutput> {
   validateField<K extends keyof TInput>(name: K): void;
   reset(name?: keyof TInput): void;
   resetAll(values?: TInput): void;
+  setError<K extends keyof TInput | "_root">(name: K, message: string): void;
   setSubmitting(submitting: boolean): void;
   subscribe(callback: () => void): () => void;
   subscribeField(name: keyof TInput, callback: () => void): () => void;
