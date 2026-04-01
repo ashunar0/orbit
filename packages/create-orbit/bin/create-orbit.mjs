@@ -50,12 +50,17 @@ src/routes/users/[id]/page.tsx   → /users/:id
 
 - \`page.tsx\` — ページコンポーネント（「目次」として読めること）
 - \`hooks.ts\` — カスタムフック（1フック1関心事）
-- \`server.ts\` — サーバー側データアクセス関数
+- \`server.ts\` — サーバー側データアクセス関数（そのルート固有のロジックをここに書く）
 - \`schema.ts\` — Zod スキーマ + 型定義
 - \`layout.tsx\` — レイアウト（\`{children}\` で子を囲む）
 - \`loading.tsx\` — ローディング状態
 - \`error.tsx\` — エラー境界
 - \`not-found.tsx\` — 404 ページ
+
+### src/lib/ — 共有ユーティリティ
+
+- \`context.ts\` — \`getContext<Env>()\` のラッパー。環境変数型を一元定義する
+- 複数ルートで共有するロジックだけ lib に置く。1ルートでしか使わないロジックは server.ts に直書きする
 
 ### page.tsx のデータフロー
 
@@ -116,12 +121,17 @@ src/routes/users/[id]/page.tsx   → /users/:id
 
 - \`page.tsx\` — Page component (should read like a table of contents)
 - \`hooks.ts\` — Custom hooks (one concern per hook)
-- \`server.ts\` — Server-side data access functions
+- \`server.ts\` — Server-side data access functions (route-specific logic goes here)
 - \`schema.ts\` — Zod schemas + type definitions
 - \`layout.tsx\` — Layout (\`{children}\` wrapper)
 - \`loading.tsx\` — Loading state
 - \`error.tsx\` — Error boundary
 - \`not-found.tsx\` — 404 page
+
+### src/lib/ — Shared Utilities
+
+- \`context.ts\` — \`getContext<Env>()\` wrapper. Defines env type in one place
+- Only put logic in lib/ if it's shared across multiple routes. Route-specific logic stays in server.ts
 
 ### Data Flow in page.tsx
 
