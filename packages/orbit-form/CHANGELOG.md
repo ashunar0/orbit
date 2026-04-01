@@ -1,5 +1,14 @@
 # orbit-form
 
+## 1.1.0 (2026-04-01)
+
+### Features
+
+- `setError()` API 追加 — サーバー起因のエラー（認証失敗等）をフィールドに紐付けて表示可能に
+  - `form.setError("password", "パスワードが違います")` でフィールド単位
+  - `form.setError("_root", "サーバーに接続できません")` でフォーム全体
+  - 既存の `fieldError()` / `errors._root` でそのまま表示できる
+
 ## 1.0.0 (2026-03-30)
 
 Phase A 完了 — API 安定、セキュリティ対応完了。
